@@ -30,22 +30,30 @@ fi
 
 if [[ "$PART" == "all" || "$PART" == "frontend" ]]; then
   echo "==> Website (Next.js)"
-  cd "$ROOT/frontend"
-  # DirectAdmin "Setup Node.js App" keeps Node in ~/nodevenv/<app root>/<version>; use it when present.
-  VENV="$(ls -d "$HOME"/nodevenv/patopro/frontend/*/bin/activate 2>/dev/null | sort -V | tail -1 || true)"
-  if [[ -n "$VENV" ]]; then
-    # shellcheck disable=SC1090
-    set +u; source "$VENV"; set -u
+  if [[ "${BUILD_ON_SERVER:-0}" == "1" ]]; then
+    # Only for servers new enough to build Next.js 16 (glibc 2.29+).
+    cd "$ROOT/frontend"
+    VENV="$(ls -d "$HOME"/nodevenv/patopro/frontend/*/bin/activate 2>/dev/null | sort -V | tail -1 || true)"
+    if [[ -n "$VENV" ]]; then set +u; source "$VENV"; set -u; fi
+    npm install --no-audit --no-fund
+    npm run build
+    rm -rf .next/standalone/.next/static .next/standalone/public
+    cp -r .next/static .next/standalone/.next/static
+    cp -r public .next/standalone/public
+  else
+    # The build is made on a PC with ./publish-web.sh and kept on the "web-build" branch.
+    WEB="$HOME/patopro-web"
+    URL="$(git -C "$ROOT" remote get-url origin)"
+    if [[ ! -d "$WEB/.git" ]]; then
+      git clone -q --depth 1 --branch web-build "$URL" "$WEB"
+    else
+      git -C "$WEB" fetch -q --depth 1 origin web-build
+      git -C "$WEB" reset -q --hard FETCH_HEAD
+      git -C "$WEB" clean -qfd
+    fi
+    echo "   $(grep -h 'Source commit\|Built' "$WEB/BUILD_INFO.txt" | tr '\n' ' ')"
   fi
-  command -v node >/dev/null || { echo "Node.js not found. Create the app in DirectAdmin → Setup Node.js App first."; exit 1; }
-  echo "   Node $(node -v)"
-  # npm install (not npm ci): on CloudLinux node_modules is a link to the app's Node environment
-  npm install --no-audit --no-fund
-  NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=1536}" npm run build
-  # Standalone output needs the static files and public folder next to server.js
-  rm -rf .next/standalone/.next/static .next/standalone/public
-  cp -r .next/static .next/standalone/.next/static
-  cp -r public .next/standalone/public
+  cd "$ROOT/frontend"
   if command -v pm2 >/dev/null 2>&1 && pm2 describe patopro-web >/dev/null 2>&1; then
     pm2 restart patopro-web --update-env
   else
