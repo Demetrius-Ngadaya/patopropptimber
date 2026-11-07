@@ -11,3 +11,4 @@ mobile/.env
 mobile/node_modules/
 *.zip
 .DS_Store
+frontend/tmp/

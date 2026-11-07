@@ -31,8 +31,17 @@ fi
 if [[ "$PART" == "all" || "$PART" == "frontend" ]]; then
   echo "==> Website (Next.js)"
   cd "$ROOT/frontend"
-  npm ci --no-audit --no-fund
-  npm run build
+  # DirectAdmin "Setup Node.js App" keeps Node in ~/nodevenv/<app root>/<version>; use it when present.
+  VENV="$(ls -d "$HOME"/nodevenv/patopro/frontend/*/bin/activate 2>/dev/null | sort -V | tail -1 || true)"
+  if [[ -n "$VENV" ]]; then
+    # shellcheck disable=SC1090
+    set +u; source "$VENV"; set -u
+  fi
+  command -v node >/dev/null || { echo "Node.js not found. Create the app in DirectAdmin → Setup Node.js App first."; exit 1; }
+  echo "   Node $(node -v)"
+  # npm install (not npm ci): on CloudLinux node_modules is a link to the app's Node environment
+  npm install --no-audit --no-fund
+  NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=1536}" npm run build
   # Standalone output needs the static files and public folder next to server.js
   rm -rf .next/standalone/.next/static .next/standalone/public
   cp -r .next/static .next/standalone/.next/static
