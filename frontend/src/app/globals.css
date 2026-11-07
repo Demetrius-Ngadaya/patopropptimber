@@ -1,0 +1,267 @@
+@import "tailwindcss";
+
+/* Dark mode is a class on <html> (set before first paint, see app/layout.tsx). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * PatoPro design tokens
+ *  ink      deep navy: navigation, headings, primary text
+ *  paper    cool off-white page background
+ *  brand    shilling green: primary actions, money in
+ *  saffron  kitenge saffron: highlights, attention, totals
+ *  ember    errors / destructive
+ */
+@theme {
+  --font-sans: "Onest Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --color-ink-950: #0a1426;
+  --color-ink-900: #13213b;
+  --color-ink-800: #1d2f50;
+  --color-ink-700: #2c4168;
+  --color-ink-600: #4a5d82;
+  --color-ink-500: #6b7a99;
+  --color-ink-400: #94a0b8;
+  --color-ink-300: #c2c9d6;
+  --color-ink-200: #dde2ea;
+  --color-ink-100: #edf0f5;
+  --color-ink-50: #f6f7fa;
+
+  --color-paper: #f4f6f9;
+  /* Cards, inputs, menus: white in light mode. */
+  --color-surface: #ffffff;
+  /* Always-dark surfaces (sidebar, totals, overlays): never inverted. */
+  --color-night-700: #2c4168;
+  --color-night-800: #1d2f50;
+  --color-night-900: #13213b;
+  --color-night-950: #0a1426;
+
+  --color-brand-50: #e9f6f0;
+  --color-brand-100: #cdeadb;
+  --color-brand-200: #9dd5ba;
+  --color-brand-500: #1f9468;
+  --color-brand-600: #157a55;
+  --color-brand-700: #106146;
+  --color-brand-800: #0c4b37;
+
+  --color-saffron-50: #fdf6e3;
+  --color-saffron-100: #fbe9b8;
+  --color-saffron-300: #f3c654;
+  --color-saffron-500: #e3a015;
+  --color-saffron-600: #c2850c;
+  --color-saffron-700: #94640a;
+
+  --color-ember-50: #fdeeea;
+  --color-ember-100: #f9d4ca;
+  --color-ember-500: #d24a26;
+  --color-ember-600: #b13b1b;
+  --color-ember-700: #8c2f16;
+
+  --radius-control: 0.5rem;
+  --radius-panel: 0.875rem;
+}
+
+/*
+ * Dark theme: the same token names with dark values, so every utility
+ * (bg-ink-50, text-ink-900, border-ink-200 ...) adapts without new classes.
+ * The ink scale is mirrored; brand / saffron / ember tints become deep
+ * backgrounds and their strong shades become brighter for text.
+ */
+.dark {
+  color-scheme: dark;
+  --color-ink-950: #f4f6fb;
+  --color-ink-900: #e6eaf2;
+  --color-ink-800: #cfd6e3;
+  --color-ink-700: #b3bdd0;
+  --color-ink-600: #95a2ba;
+  --color-ink-500: #7d8aa3;
+  --color-ink-400: #5f6c86;
+  --color-ink-300: #414d67;
+  --color-ink-200: #2c3752;
+  --color-ink-100: #1e2842;
+  --color-ink-50: #161f37;
+  --color-paper: #0b1222;
+  --color-surface: #111a2e;
+  --color-night-700: #33466b;
+  --color-night-800: #22355a;
+  --color-night-900: #0e182c;
+  --color-night-950: #070d1a;
+
+  --color-brand-50: #0e2a20;
+  --color-brand-100: #13392b;
+  --color-brand-200: #1c5a42;
+  --color-brand-500: #23a675;
+  --color-brand-600: #1d9c6c;
+  --color-brand-700: #52c99c;
+  --color-brand-800: #94e0c1;
+
+  --color-saffron-50: #2a2108;
+  --color-saffron-100: #3b2e0c;
+  --color-saffron-300: #9c7616;
+  --color-saffron-500: #e3a015;
+  --color-saffron-600: #efb53e;
+  --color-saffron-700: #f5cd78;
+
+  --color-ember-50: #2d140d;
+  --color-ember-100: #44190e;
+  --color-ember-500: #e5603c;
+  --color-ember-600: #ef7a58;
+  --color-ember-700: #f5a088;
+}
+
+/* Things that must look the same in both themes: printed receipts, the
+   dark sidebar and dark panels whose text was designed for a navy background. */
+.dark .keep-light,
+.keep-light {
+  color-scheme: light;
+  --color-ink-950: #0a1426;
+  --color-ink-900: #13213b;
+  --color-ink-800: #1d2f50;
+  --color-ink-700: #2c4168;
+  --color-ink-600: #4a5d82;
+  --color-ink-500: #6b7a99;
+  --color-ink-400: #94a0b8;
+  --color-ink-300: #c2c9d6;
+  --color-ink-200: #dde2ea;
+  --color-ink-100: #edf0f5;
+  --color-ink-50: #f6f7fa;
+  --color-paper: #f4f6f9;
+  --color-surface: #ffffff;
+  --color-brand-50: #e9f6f0;
+  --color-brand-100: #cdeadb;
+  --color-brand-200: #9dd5ba;
+  --color-brand-500: #1f9468;
+  --color-brand-600: #157a55;
+  --color-brand-700: #106146;
+  --color-brand-800: #0c4b37;
+  --color-saffron-50: #fdf6e3;
+  --color-saffron-100: #fbe9b8;
+  --color-saffron-300: #f3c654;
+  --color-saffron-500: #e3a015;
+  --color-saffron-600: #c2850c;
+  --color-saffron-700: #94640a;
+  --color-ember-50: #fdeeea;
+  --color-ember-100: #f9d4ca;
+  --color-ember-500: #d24a26;
+  --color-ember-600: #b13b1b;
+  --color-ember-700: #8c2f16;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink-900);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01";
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Money and quantities line up in columns */
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* The POS cart is drawn as a till receipt with a torn bottom edge. */
+.receipt-tape {
+  background: var(--color-surface);
+  --tear: 10px;
+  -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / calc(var(--tear) * 2) 100%;
+  mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / calc(var(--tear) * 2) 100%;
+  padding-bottom: calc(var(--tear) + 0.75rem);
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+  /* Paper is always white, whatever the screen theme. */
+  html.dark {
+  color-scheme: light;
+  --color-ink-950: #0a1426;
+  --color-ink-900: #13213b;
+  --color-ink-800: #1d2f50;
+  --color-ink-700: #2c4168;
+  --color-ink-600: #4a5d82;
+  --color-ink-500: #6b7a99;
+  --color-ink-400: #94a0b8;
+  --color-ink-300: #c2c9d6;
+  --color-ink-200: #dde2ea;
+  --color-ink-100: #edf0f5;
+  --color-ink-50: #f6f7fa;
+  --color-paper: #f4f6f9;
+  --color-surface: #ffffff;
+  --color-brand-50: #e9f6f0;
+  --color-brand-100: #cdeadb;
+  --color-brand-200: #9dd5ba;
+  --color-brand-500: #1f9468;
+  --color-brand-600: #157a55;
+  --color-brand-700: #106146;
+  --color-brand-800: #0c4b37;
+  --color-saffron-50: #fdf6e3;
+  --color-saffron-100: #fbe9b8;
+  --color-saffron-300: #f3c654;
+  --color-saffron-500: #e3a015;
+  --color-saffron-600: #c2850c;
+  --color-saffron-700: #94640a;
+  --color-ember-50: #fdeeea;
+  --color-ember-100: #f9d4ca;
+  --color-ember-500: #d24a26;
+  --color-ember-600: #b13b1b;
+  --color-ember-700: #8c2f16;
+  }
+}
+
+/* Shop price tag: notched left edge with a punched hole, like a tag on a market shelf. */
+.price-tag {
+  position: relative;
+  clip-path: polygon(12px 0, 100% 0, 100% 100%, 12px 100%, 0 50%);
+  border-radius: 0 4px 4px 0;
+}
+.price-tag::before {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 9999px;
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1px rgb(19 33 59 / 0.25);
+}
+
+/* Login picture slider: slow cross-fade with a gentle zoom, so the change is barely noticed. */
+@keyframes kenburns {
+  from { transform: scale(1.0); }
+  to { transform: scale(1.08); }
+}
+.slide-zoom {
+  animation: kenburns 14s ease-out both;
+}
+
+/* Floating shop widgets (contact and chat): a gentle bob, a ringing phone, a soft pop-in. */
+@keyframes widget-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes widget-ring { 0%, 70%, 100% { transform: rotate(0); } 75% { transform: rotate(-14deg); } 80% { transform: rotate(12deg); } 85% { transform: rotate(-10deg); } 90% { transform: rotate(8deg); } }
+@keyframes widget-pop { from { opacity: 0; transform: translateY(12px) scale(0.96); } to { opacity: 1; transform: none; } }
+.widget-float { animation: widget-bob 3.2s ease-in-out infinite; }
+.widget-float-late { animation-delay: 1.6s; }
+.widget-ring { animation: widget-ring 2.8s ease-in-out infinite; transform-origin: 50% 50%; }
+.widget-pop { animation: widget-pop 0.22s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .widget-float, .widget-ring, .widget-pop { animation: none; }
+}
