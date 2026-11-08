@@ -52,6 +52,8 @@ class ImportMauzoApp extends Command
         {--password= : Old database password (asked for when --username is given; avoid typing it here)}
         {--dry-run : Do everything, show the summary, then undo it}
         {--update : PatoPro was imported before: add only what is missing (safe to repeat)}
+        {--include-deleted : Also bring sales deleted from MauzoApp that still sit in its transfers list}
+        {--remove-deleted : Remove sales added earlier from the MauzoApp transfers list (deleted in MauzoApp)}
         {--force : Import even though PatoPro already has sales or products}';
 
     protected $description = 'Bring products, stock, staff, customers, debts and history from the old MauzoApp database into PatoPro';
@@ -101,6 +103,10 @@ class ImportMauzoApp extends Command
 
     public function handle(): int
     {
+        if ($this->option('remove-deleted')) {
+            return $this->removeDeletedSales();
+        }
+
         try {
             $this->old = $this->connect();
         } catch (Throwable $e) {
@@ -476,7 +482,7 @@ class ImportMauzoApp extends Command
                 'due_date' => $credit ? ($group->pluck('date_to_pay')->filter()->first() ?: null) : null,
                 'fully_paid_at' => $balance > 0 ? null : $paidAt,
                 'sold_at' => $soldAt,
-                'notes' => self::NOTE.' (invoice '.$this->clean($first->invoice_number).')'.($first->archived ?? false ? ' – found only in MauzoApp\'s transfers list' : ''),
+                'notes' => self::NOTE.' (invoice '.$this->clean($first->invoice_number).')'.($first->archived ?? false ? ' – '.self::DELETED_MARK : ''),
                 'created_by' => $cashierId,
                 'updated_by' => $cashierId,
                 'created_at' => $soldAt,
@@ -803,6 +809,43 @@ class ImportMauzoApp extends Command
             : 'Import finished. The old database was only read, never changed.');
     }
 
+    private const DELETED_MARK = "found only in MauzoApp's transfers list";
+
+    /**
+     * Takes out sales that an earlier run brought from MauzoApp's transfers list.
+     * MauzoApp's own reports leave them out (they were deleted there), so with them
+     * PatoPro's totals would not match. They never moved stock, so only the records go.
+     */
+    private function removeDeletedSales(): int
+    {
+        $sales = DB::table('sales')->where('notes', 'like', self::NOTE.'%'.self::DELETED_MARK.'%')->get(['id', 'number', 'total', 'balance', 'customer_id', 'sold_at']);
+        if ($sales->isEmpty()) {
+            $this->info('There are no sales from MauzoApp\'s transfers list in PatoPro. Nothing to remove.');
+
+            return self::SUCCESS;
+        }
+        $this->table(['Sale', 'Date', 'Amount'], $sales->map(fn ($s) => [$s->number, substr((string) $s->sold_at, 0, 10), number_format((float) $s->total)])->all());
+        if ($this->option('dry-run')) {
+            $this->info('Dry run: these '.$sales->count().' sales ('.number_format((float) $sales->sum('total')).') would be removed. Nothing was changed.');
+
+            return self::SUCCESS;
+        }
+        DB::transaction(function () use ($sales) {
+            $ids = $sales->pluck('id');
+            foreach ($sales->where('balance', '>', 0) as $s) {
+                if ($s->customer_id) {
+                    DB::table('customers')->where('id', $s->customer_id)->decrement('balance', (float) $s->balance);
+                }
+            }
+            DB::table('payments')->whereIn('sale_id', $ids)->delete();
+            DB::table('sale_items')->whereIn('sale_id', $ids)->delete();
+            DB::table('sales')->whereIn('id', $ids)->delete();
+        });
+        $this->info('Removed '.$sales->count().' sales worth '.number_format((float) $sales->sum('total')).'. PatoPro now matches MauzoApp\'s sales report.');
+
+        return self::SUCCESS;
+    }
+
     private int $pricedBranches = 0;
 
     /**
@@ -862,7 +905,8 @@ class ImportMauzoApp extends Command
      */
     private function archivedSales($sales)
     {
-        if (! $this->old->getSchemaBuilder()->hasTable('transfers')) {
+        // MauzoApp does not count these in its reports: they were deleted on purpose.
+        if (! $this->option('include-deleted') || ! $this->old->getSchemaBuilder()->hasTable('transfers')) {
             return collect();
         }
         $key = fn ($r) => implode('|', [$this->clean($r->invoice_number), (int) $r->medicine_id, (string) (0 + (float) $r->quantity), round((float) $r->total_amount, 2), (int) $r->store_id]);

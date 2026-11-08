@@ -108,4 +108,26 @@ class BranchPricesTest extends TestCase
         $this->assertStringContainsString('spreadsheetml', (string) $page->headers->get('Content-Type'));
         $this->get('/api/v1/admin/reports/stock?export=pdf')->assertOk();
     }
+
+    public function test_sales_register_names_saved_customers_and_shows_profit(): void
+    {
+        $product = $this->productWithStock(10, ['selling_price' => 6000, 'cost_price' => 4000], null, 4000);
+        $customer = \App\Models\Crm\Customer::create(['code' => 'C-1', 'name' => 'MBALINGA ERICK', 'allow_credit' => true, 'credit_limit' => 0, 'is_active' => true]);
+        $this->actingAsStaff('admin');
+        $this->postJson('/api/v1/admin/pos/checkout', [
+            'customer_id' => $customer->id,
+            'items' => [['product_id' => $product->id, 'quantity' => 2]],
+            'payments' => [['method' => 'cash', 'amount' => 12000]],
+        ])->assertCreated();
+
+        $register = $this->getJson('/api/v1/admin/reports/sales')->assertOk();
+        $this->assertSame('MBALINGA ERICK', $register->json('data.0.customer_label'));
+        $this->assertEquals(4000, $register->json('report.totals.profit'));
+
+        $lines = $this->getJson('/api/v1/admin/reports/sales_items')->assertOk();
+        $this->assertSame('MBALINGA ERICK', $lines->json('data.0.customer'));
+        $this->assertSame('cash', $lines->json('data.0.sale_type'));
+        $this->assertEquals(4000, $lines->json('report.summary.gross_profit'));
+    }
 }
+

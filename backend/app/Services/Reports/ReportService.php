@@ -229,15 +229,17 @@ class ReportService
             ->when($f['customer_id'] ?? null, fn ($q, $v) => $q->where('customer_id', $v))
             ->when($f['payment_status'] ?? null, fn ($q, $v) => $q->where('payment_status', $v))
             ->when($f['channel'] ?? null, fn ($q, $v) => $q->where('channel', $v))
-            ->orderByDesc('sold_at');
+            ->orderByDesc('sold_at')->orderByDesc('sales.id');
 
         $totals = (clone $query)->toBase()->reorder()->selectRaw('COUNT(*) as count, SUM(total) as total, SUM(returned_amount) as returned_amount, SUM(amount_paid) as amount_paid, SUM(balance) as balance, SUM(cost_total) as cost_total')->first();
+        // The customer's name whether it is a saved customer or a name typed at the till.
+        $customerLabel = DB::raw('COALESCE((SELECT customers.name FROM customers WHERE customers.id = sales.customer_id), sales.customer_name) as customer_label');
 
         $columns = [
             'number' => 'Invoice',
             'sold_at' => ['label' => 'Date', 'type' => 'datetime'],
             'branch.name' => 'Branch',
-            'customer_name' => 'Customer',
+            'customer_label' => 'Customer',
             'cashier.name' => 'Cashier',
             'channel' => 'Channel',
             'total' => ['label' => 'Total', 'type' => 'money'],
@@ -256,9 +258,13 @@ class ReportService
 
         if ($showCost) {
             $columns['cost_total'] = ['label' => 'Cost', 'type' => 'money'];
+            $columns['profit'] = ['label' => 'Profit', 'type' => 'money'];
             $sumTotals['cost_total'] = (float) $totals->cost_total;
+            $sumTotals['profit'] = round((float) $totals->total - (float) $totals->returned_amount - (float) $totals->cost_total, 2);
+            $query->select('sales.*')->addSelect([$customerLabel, DB::raw('(sales.total - sales.returned_amount - sales.cost_total) as profit')]);
         } else {
-            $query->select(array_map(fn ($c) => "sales.{$c}", ['id', 'number', 'sold_at', 'branch_id', 'customer_id', 'customer_name', 'cashier_id', 'channel', 'total', 'returned_amount', 'amount_paid', 'balance', 'payment_status', 'status']));
+            $query->select(array_map(fn ($c) => "sales.{$c}", ['id', 'number', 'sold_at', 'branch_id', 'customer_id', 'customer_name', 'cashier_id', 'channel', 'total', 'returned_amount', 'amount_paid', 'balance', 'payment_status', 'status']))
+                ->addSelect([$customerLabel]);
         }
 
         return [
@@ -276,14 +282,19 @@ class ReportService
     {
         $query = $this->salesItemsBase($from, $to)
             ->leftJoin('users', 'users.id', '=', 'sales.cashier_id')
+            ->leftJoin('customers', 'customers.id', '=', 'sales.customer_id')
+            ->leftJoin('branches', 'branches.id', '=', 'sales.branch_id')
             ->when($f['product_id'] ?? null, fn ($q, $v) => $q->where('sale_items.product_id', $v))
             ->when($f['category_id'] ?? null, fn ($q, $v) => $q->where('products.category_id', $v))
             ->when($f['cashier_id'] ?? null, fn ($q, $v) => $q->where('sales.cashier_id', $v))
             ->select([
                 'sales.number', 'sales.sold_at', 'sale_items.product_name', 'sale_items.quantity', 'sale_items.returned_quantity',
                 'sale_items.unit_price', 'sale_items.discount', 'sale_items.line_total', 'users.name as cashier',
+                DB::raw('COALESCE(customers.name, sales.customer_name) as customer'),
+                DB::raw("CASE WHEN sales.is_credit = 1 THEN 'credit' ELSE 'cash' END as sale_type"),
+                'sales.payment_status', 'branches.name as branch',
             ])
-            ->orderByDesc('sales.sold_at');
+            ->orderByDesc('sales.sold_at')->orderByDesc('sales.id')->orderBy('sale_items.id');
 
         if ($showCost) {
             $query->addSelect(['sale_items.unit_cost', DB::raw(self::NET_REVENUE.' - '.self::NET_COST.' as profit')]);
@@ -300,18 +311,25 @@ class ReportService
             'unit_price' => ['label' => 'Price', 'type' => 'money'],
             'discount' => ['label' => 'Discount', 'type' => 'money'],
             'line_total' => ['label' => 'Amount', 'type' => 'money'],
-            'cashier' => 'Cashier',
         ];
         if ($showCost) {
             $columns['unit_cost'] = ['label' => 'Unit cost', 'type' => 'money'];
             $columns['profit'] = ['label' => 'Profit', 'type' => 'money'];
         }
+        $columns += [
+            'cashier' => 'Cashier',
+            'customer' => 'Customer',
+            'sale_type' => 'Cash / credit',
+            'payment_status' => 'Payment',
+            'branch' => 'Branch',
+        ];
 
         return [
             'columns' => $columns,
             'query' => $query,
             'totals' => ['line_total' => (float) $totals->revenue] + ($showCost ? ['profit' => (float) $totals->revenue - (float) $totals->cost] : []),
-            'summary' => ['quantity_sold' => round((float) $totals->qty, 3), 'net_revenue' => round((float) $totals->revenue, 2)],
+            'summary' => ['quantity_sold' => round((float) $totals->qty, 3), 'net_revenue' => round((float) $totals->revenue, 2)]
+                + ($showCost ? ['gross_profit' => round((float) $totals->revenue - (float) $totals->cost, 2)] : []),
         ];
     }
 
