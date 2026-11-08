@@ -11,6 +11,7 @@ use App\Models\Crm\Customer;
 use App\Models\Inventory\ProductStock;
 use App\Models\Sales\Order;
 use App\Models\Sales\Sale;
+use App\Services\Catalog\BranchPrices;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
@@ -29,6 +30,8 @@ use Illuminate\Support\Carbon;
  */
 class SyncPuller
 {
+    private ?int $branchId = null;
+
     public const ENTITIES = ['categories', 'products', 'units', 'stock', 'customers', 'orders', 'sales', 'notifications'];
 
     private const OVERLAP_SECONDS = 60;
@@ -39,6 +42,7 @@ class SyncPuller
      */
     public function pull(User $user, int $branchId, array $cursors, ?array $only = null): array
     {
+        $this->branchId = $branchId;
         $limit = max(50, (int) config('mauzo.mobile.pull_page_size', 500));
         $out = [];
         foreach (self::ENTITIES as $entity) {
@@ -98,6 +102,10 @@ class SyncPuller
         $rows = $query->orderBy("{$table}.updated_at")->orderBy("{$table}.id")->limit($limit + 1)->get();
         $hasMore = $rows->count() > $limit;
         $rows = $rows->take($limit);
+        if ($entity === 'products') {
+            // Prices on the phone are the branch's own prices where it has them.
+            app(BranchPrices::class)->apply($rows, $this->branchId);
+        }
         $last = $rows->last();
 
         if (! $last) {

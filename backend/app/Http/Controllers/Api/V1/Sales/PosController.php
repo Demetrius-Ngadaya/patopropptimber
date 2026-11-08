@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Sales\CheckoutRequest;
 use App\Models\Catalog\Product;
 use App\Models\Sales\HeldSale;
+use App\Services\Catalog\BranchPrices;
 use App\Services\Mobile\SyncPusher;
 use App\Services\Sales\SaleService;
 use Illuminate\Http\JsonResponse;
@@ -43,6 +44,8 @@ class PosController extends Controller
             ->orderBy('name')
             ->limit(min((int) $request->query('limit', 40), 100))
             ->get();
+        // This branch's own prices, where it has them.
+        app(BranchPrices::class)->apply($products, $branchId);
 
         return $this->ok($products);
     }
@@ -66,7 +69,7 @@ class PosController extends Controller
             $data['price_level'] = null; // the customer type decides
         }
 
-        return $this->ok($sales->quote($data));
+        return $this->ok($sales->quote($data, $this->branch()->id()));
     }
 
     public function checkout(CheckoutRequest $request, SaleService $sales): JsonResponse

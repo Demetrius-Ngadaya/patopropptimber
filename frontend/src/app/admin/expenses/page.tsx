@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { api, type ApiResponse, type Paginated } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { date, money, monthStart, today, humanize } from "@/lib/format";
+import { date, money, today, humanize } from "@/lib/format";
 import { fieldErrors, useAction, useApi, useDebounced } from "@/lib/hooks";
 import { paymentMethodLabels, useLookups } from "@/lib/lookups";
 import { Guard } from "@/components/layout/Guard";
@@ -18,7 +18,8 @@ export default function ExpensesPage() {
   const t = useT();
   const { can } = useAuth();
   const { expense_categories = [] } = useLookups(["expense_categories"]);
-  const [f, setF] = useState({ search: "", expense_category_id: "", date_from: monthStart(), date_to: today() });
+  // All dates by default, so older expenses (e.g. brought over from MauzoApp) are visible; narrow with From / To.
+  const [f, setF] = useState({ search: "", expense_category_id: "", date_from: "", date_to: "" });
   const [trashed, setTrashed] = useState(false);
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<Expense | null>(null);
@@ -27,6 +28,12 @@ export default function ExpensesPage() {
   const [deleting, setDeleting] = useState<Expense | null>(null);
   const search = useDebounced(f.search);
   const list = useApi<Paginated<Expense> & { summary: { total: number } }>("admin/expenses", { ...f, search, page, trashed: trashed ? "only" : undefined });
+  const [lastFilters, setLastFilters] = useState(JSON.stringify({ f, trashed }));
+  if (lastFilters !== JSON.stringify({ f, trashed })) {
+    // New filters start again at page 1.
+    setLastFilters(JSON.stringify({ f, trashed }));
+    setPage(1);
+  }
 
   const save = useAction(
     () => {
@@ -49,7 +56,7 @@ export default function ExpensesPage() {
   return (
     <Guard perm="expenses.view">
       <PageHeader title={t("Expenses")} description={t("Money spent running the business: rent, power, wages, transport…")} actions={can("expenses.create") && <Button icon={<Plus className="size-4" />} onClick={() => openForm()}>{t("Record expense")}</Button>} />
-      {list.data?.summary && <div className="mb-5 max-w-xs"><Stat label={t("Total for the filtered period")} value={money(list.data.summary.total)} tone="saffron" /></div>}
+      {list.data?.summary && <div className="mb-5 max-w-xs"><Stat label={f.date_from || f.date_to ? t("Total for the filtered period") : t("Total of all expenses")} value={money(list.data.summary.total)} tone="saffron" /></div>}
       <Panel padded={false}>
         <div className="grid gap-3 border-b border-ink-100 p-3 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr_auto]">
           <SearchInput value={f.search} onChange={(v) => setF({ ...f, search: v })} placeholder={t("Search expenses")} />
@@ -64,7 +71,7 @@ export default function ExpensesPage() {
           { key: "category.name", header: t("Category"), hideOnMobile: true },
           { key: "payment_method", header: t("Paid by"), hideOnMobile: true, render: (r) => t(paymentMethodLabels[r.payment_method] ?? humanize(r.payment_method)) },
           { key: "creator.name", header: t("Recorded by"), hideOnMobile: true },
-          { key: "amount", header: t("Amount"), align: "right", render: (r) => <span className="font-semibold">{money(r.amount)}</span> },
+          { key: "amount", header: t("Amount"), align: "right", total: "money", totalValue: list.data?.meta && list.data.meta.last_page > 1 ? list.data?.summary?.total : undefined, render: (r) => <span className="font-semibold">{money(r.amount)}</span> },
           { key: "_a", header: "", align: "right", render: (r) => r.deleted_at ? (can("expenses.restore") && <Button size="sm" variant="secondary" icon={<RotateCcw className="size-3.5" />} onClick={() => restore.mutate(r.id)}>{t("Restore")}</Button>) : (
             <span className="flex justify-end gap-1">
               {can("expenses.update") && <Button size="sm" variant="ghost" aria-label={t("Edit")} onClick={() => openForm(r)}><Pencil className="size-4" /></Button>}

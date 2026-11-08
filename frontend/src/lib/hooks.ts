@@ -1,16 +1,26 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
+import { replaceEqualDeep, useMutation, useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api, ApiError, type ApiResponse, type Paginated } from "./api";
 import { useT } from "./i18n";
+import { annotatePage, useTableSize } from "./table-size";
 
-/** GET with caching. `query` becomes part of the cache key. */
+/**
+ * GET with caching. `query` becomes part of the cache key.
+ * Lists remember the rows-per-page the user picked (Pagination's selector) and get
+ * row numbers for the S/N column.
+ */
 export function useApi<T>(path: string | null, query?: Record<string, string | number | boolean | null | undefined>, options?: { enabled?: boolean; keepPrevious?: boolean }) {
+  const size = useTableSize(path);
+  const effective = size && !(query && "per_page" in query) ? { ...(query ?? {}), per_page: size } : query;
   return useQuery<T, ApiError>({
-    queryKey: [path, query ?? {}],
-    queryFn: ({ signal }) => api.get<T>(path as string, query, signal),
+    queryKey: [path, effective ?? {}],
+    queryFn: ({ signal }) => api.get<T>(path as string, effective, signal),
+    // Row numbers and the list's path are added after structural sharing, which copies
+    // changed objects (and would drop them).
+    structuralSharing: (oldData, newData) => annotatePage(path as string, replaceEqualDeep(oldData, newData)),
     enabled: Boolean(path) && (options?.enabled ?? true),
     placeholderData: options?.keepPrevious === false ? undefined : (prev) => prev,
   });

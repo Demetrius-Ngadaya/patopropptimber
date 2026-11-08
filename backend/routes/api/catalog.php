@@ -20,6 +20,7 @@ Route::prefix('products')->name('products.')->group(function () {
     Route::match(['get', 'post'], '/labels', [ProductCodeController::class, 'labels'])->middleware('permission:products.print_labels')->name('labels');
     Route::get('/scan/{token}', [ProductCodeController::class, 'scan'])->where('token', '[A-Za-z0-9]{8,24}')->name('scan');
     Route::get('/{id}', [ProductController::class, 'show'])->middleware('permission:products.view')->whereNumber('id')->name('show');
+    Route::put('/{id}/branch-prices', [ProductController::class, 'branchPrices'])->middleware('permission:products.update')->whereNumber('id')->name('branch-prices');
     Route::put('/{id}/descriptions', [ProductController::class, 'descriptions'])->middleware('permission:products.update')->whereNumber('id')->name('descriptions');
     Route::put('/{id}', [ProductController::class, 'update'])->middleware('permission:products.update')->whereNumber('id')->name('update');
     Route::delete('/{id}', [ProductController::class, 'destroy'])->middleware('permission:products.delete')->whereNumber('id')->name('destroy');

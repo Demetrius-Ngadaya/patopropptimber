@@ -323,7 +323,7 @@ class SalesDocumentService
         if ($items === []) {
             throw new BusinessException(__('Add at least one product.'));
         }
-        $quote = $this->sales->quote(['customer_id' => $customer?->id, 'price_level' => $data['price_level'] ?? null, 'items' => $items, 'discount' => $data['discount'] ?? 0]);
+        $quote = $this->sales->quote(['customer_id' => $customer?->id, 'price_level' => $data['price_level'] ?? null, 'items' => $items, 'discount' => $data['discount'] ?? 0], $data['_branch_id'] ?? app(\App\Support\BranchContext::class)->id());
         $products = Product::query()->whereIn('id', collect($items)->pluck('product_id'))->get()->keyBy('id');
 
         $lines = [];

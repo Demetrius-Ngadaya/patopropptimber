@@ -22,6 +22,7 @@ use App\Models\Sales\Payment;
 use App\Models\Sales\Sale;
 use App\Models\Sales\SaleReturnItem;
 use App\Models\Sales\SalesDocument;
+use App\Services\Catalog\BranchPrices;
 use App\Services\Core\SettingsService;
 use App\Support\BranchContext;
 use Illuminate\Database\Query\Builder;
@@ -488,17 +489,23 @@ class ReportService
             })
             ->select([
                 'products.name as product', 'products.sku', 'categories.name as category', 'branches.name as branch',
-                'product_stocks.quantity', 'units.short_name as unit', 'products.reorder_level', 'products.selling_price',
-                DB::raw('product_stocks.quantity * products.selling_price as retail_value'),
+                'product_stocks.quantity', 'units.short_name as unit', 'products.reorder_level',
+                // Each branch's own prices where it has them.
+                DB::raw(BranchPrices::sql('selling_price').' as selling_price'),
+                DB::raw('product_stocks.quantity * '.BranchPrices::sql('selling_price').' as retail_value'),
             ])
             ->orderBy('products.name');
         $this->branch->scope($query, 'product_stocks.branch_id');
 
         if ($showCost || auth()->user()?->hasPermission('products.view_cost')) {
-            $query->addSelect(['products.cost_price', DB::raw('product_stocks.quantity * products.cost_price as cost_value')]);
+            $query->addSelect([
+                DB::raw(BranchPrices::sql('cost_price').' as cost_price'),
+                DB::raw('product_stocks.quantity * '.BranchPrices::sql('cost_price').' as cost_value'),
+                DB::raw('product_stocks.quantity * ('.BranchPrices::sql('selling_price').' - '.BranchPrices::sql('cost_price').') as expected_profit'),
+            ]);
         }
 
-        $totals = (clone $query)->toBase()->reorder()->select(DB::raw('SUM(product_stocks.quantity * products.cost_price) as cost_value, SUM(product_stocks.quantity * products.selling_price) as retail_value, COUNT(*) as items'))->first();
+        $totals = (clone $query)->toBase()->reorder()->select(DB::raw('SUM(product_stocks.quantity * '.BranchPrices::sql('cost_price').') as cost_value, SUM(product_stocks.quantity * '.BranchPrices::sql('selling_price').') as retail_value, SUM(product_stocks.quantity) as quantity, COUNT(*) as items'))->first();
         $canCost = $showCost || auth()->user()?->hasPermission('products.view_cost');
 
         $columns = [
@@ -509,19 +516,28 @@ class ReportService
             'quantity' => ['label' => 'Qty', 'type' => 'number'],
             'unit' => 'Unit',
             'reorder_level' => ['label' => 'Reorder at', 'type' => 'number'],
-            'selling_price' => ['label' => 'Price', 'type' => 'money'],
-            'retail_value' => ['label' => 'Retail value', 'type' => 'money'],
         ];
         if ($canCost) {
-            $columns['cost_price'] = ['label' => 'Cost', 'type' => 'money'];
-            $columns['cost_value'] = ['label' => 'Cost value', 'type' => 'money'];
+            $columns['cost_price'] = ['label' => 'Buying price', 'type' => 'money'];
+            $columns['cost_value'] = ['label' => 'Value at buying price', 'type' => 'money'];
         }
+        $columns['selling_price'] = ['label' => 'Selling price', 'type' => 'money'];
+        $columns['retail_value'] = ['label' => 'Money after selling', 'type' => 'money'];
+        if ($canCost) {
+            $columns['expected_profit'] = ['label' => 'Expected profit', 'type' => 'money'];
+        }
+
+        $retail = (float) $totals->retail_value;
+        $cost = (float) $totals->cost_value;
 
         return [
             'columns' => $columns,
             'query' => $query,
-            'totals' => ['retail_value' => (float) $totals->retail_value] + ($canCost ? ['cost_value' => (float) $totals->cost_value] : []),
-            'summary' => ['items' => (int) $totals->items, 'retail_value' => round((float) $totals->retail_value, 2)] + ($canCost ? ['cost_value' => round((float) $totals->cost_value, 2)] : []),
+            'totals' => ['quantity' => (float) $totals->quantity, 'retail_value' => $retail] + ($canCost ? ['cost_value' => $cost, 'expected_profit' => $retail - $cost] : []),
+            'summary' => ['items' => (int) $totals->items]
+                + ($canCost ? ['value_at_buying_price' => round($cost, 2)] : [])
+                + ['money_after_selling' => round($retail, 2)]
+                + ($canCost ? ['expected_profit' => round($retail - $cost, 2)] : []),
         ];
     }
 

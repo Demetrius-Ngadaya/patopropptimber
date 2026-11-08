@@ -1531,5 +1531,13 @@
     "Saved.": "Imehifadhiwa.",
     "Release removed from download.": "Toleo limeondolewa kwenye upakuaji.",
     "Mobile app downloads": "Upakuaji wa programu ya simu",
-    "Upload new versions of the mobile app for staff to download": "Pakia matoleo mapya ya programu ya simu ili wafanyakazi wapakue"
+    "Upload new versions of the mobile app for staff to download": "Pakia matoleo mapya ya programu ya simu ili wafanyakazi wapakue",
+    "S/N": "Na.",
+    "You do not have access to that branch.": "Huna ruhusa ya tawi hilo.",
+    "Branch prices saved.": "Bei za tawi zimehifadhiwa.",
+    "Buying price": "Bei ya kununulia",
+    "Value at buying price": "Thamani kwa bei ya kununulia",
+    "Selling price": "Bei ya kuuzia",
+    "Money after selling": "Pesa baada ya kuuza",
+    "Expected profit": "Faida tarajiwa"
 }

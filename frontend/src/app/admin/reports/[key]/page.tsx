@@ -79,8 +79,9 @@ export default function ReportViewer({ params }: { params: Promise<{ key: string
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState<string | null>(null);
+  const [scope, setScope] = useState<"all" | "page">("all");
   const debounced = useDebounced(filters, 350);
-  const query = { ...debounced, customer_id: customer?.id, page, per_page: 50 };
+  const query = { ...debounced, customer_id: customer?.id, page };
   const q = useApi<ReportResponse>(`admin/reports/${key}`, query);
   const r = q.data?.report;
   const set = (k: string, v: string) => { setFilters((f) => ({ ...f, [k]: v })); setPage(1); };
@@ -88,7 +89,9 @@ export default function ReportViewer({ params }: { params: Promise<{ key: string
   const exportAs = async (format: "xlsx" | "pdf") => {
     setExporting(format);
     try {
-      await download(`admin/reports/${key}`, { ...query, page: undefined, per_page: undefined, export: format });
+      await download(`admin/reports/${key}`, scope === "page"
+        ? { ...query, per_page: q.data?.meta.per_page, export: format, scope: "page" }
+        : { ...query, page: undefined, export: format });
       toast.success(tr("{value} file downloaded.", { value: format === "pdf" ? "PDF" : "Excel" }));
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : tr("Export failed."));
@@ -124,6 +127,10 @@ export default function ReportViewer({ params }: { params: Promise<{ key: string
         description={r ? tr("{from} to {to}", { from: date(r.period.from), to: date(r.period.to) }) : undefined}
         actions={can("reports.export") && (
           <>
+            <Select aria-label={tr("What to download")} value={scope} onChange={(e) => setScope(e.target.value as "all" | "page")} className="w-auto">
+              <option value="all">{tr("All filtered records")}</option>
+              <option value="page">{tr("Only this page")}</option>
+            </Select>
             <Button variant="secondary" icon={<FileSpreadsheet className="size-4" />} loading={exporting === "xlsx"} onClick={() => exportAs("xlsx")}>{tr("Excel")}</Button>
             <Button variant="secondary" icon={<FileDown className="size-4" />} loading={exporting === "pdf"} onClick={() => exportAs("pdf")}>{tr("PDF")}</Button>
           </>
@@ -148,24 +155,27 @@ export default function ReportViewer({ params }: { params: Promise<{ key: string
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ink-200 bg-ink-50/60">
+                  <th className="w-10 whitespace-nowrap px-3 py-2.5 text-left text-[12.5px] font-semibold text-ink-600">{tr("S/N")}</th>
                   {r.columns.map((c) => <th key={c.key} className={`whitespace-nowrap px-3 py-2.5 text-[12.5px] font-semibold text-ink-600 ${c.type === "money" || c.type === "number" ? "text-right" : "text-left"}`}>{c.label}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {q.data.data.map((row, i) => (
                   <tr key={i} className="border-b border-ink-100">
+                    <td className="num px-3 py-2 text-xs text-ink-500">{(q.data.meta.current_page - 1) * q.data.meta.per_page + i + 1}</td>
                     {r.columns.map((c) => {
                       const value = get(row, c.key) ?? get(row, c.key.replace(/([a-z])_?([A-Z])/g, "$1_$2").toLowerCase());
                       return <td key={c.key} className={`whitespace-nowrap px-3 py-2 ${c.type === "money" || c.type === "number" ? "num text-right" : ""}`}>{format(value, c.type)}</td>;
                     })}
                   </tr>
                 ))}
-                {!q.data.data.length && <tr><td colSpan={r.columns.length} className="px-3 py-10 text-center text-ink-500">{tr("No records for these filters.")}</td></tr>}
+                {!q.data.data.length && <tr><td colSpan={r.columns.length + 1} className="px-3 py-10 text-center text-ink-500">{tr("No records for these filters.")}</td></tr>}
               </tbody>
               {Object.keys(r.totals).length > 0 && q.data.data.length > 0 && (
                 <tfoot>
-                  <tr className="bg-ink-50 font-semibold">
-                    {r.columns.map((c, i) => <td key={c.key} className={`px-3 py-2.5 ${c.type === "money" || c.type === "number" ? "num text-right" : ""}`}>{i === 0 ? tr("Total (all pages)") : c.key in r.totals ? money(r.totals[c.key]) : ""}</td>)}
+                  <tr className="border-t-2 border-ink-200 bg-ink-50 font-semibold">
+                    <td className="px-3 py-2.5" />
+                    {r.columns.map((c, i) => <td key={c.key} className={`whitespace-nowrap px-3 py-2.5 ${c.type === "money" || c.type === "number" ? "num text-right" : ""}`}>{c.key in r.totals ? (c.type === "number" ? qty(r.totals[c.key]) : money(r.totals[c.key])) : i === 0 ? (q.data.meta.last_page > 1 ? tr("Total (all pages)") : tr("Total")) : ""}</td>)}
                   </tr>
                 </tfoot>
               )}

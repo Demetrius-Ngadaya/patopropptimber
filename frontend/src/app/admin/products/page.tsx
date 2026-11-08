@@ -12,7 +12,9 @@ import { useLookups } from "@/lib/lookups";
 import type { Product } from "@/lib/types";
 import { Guard, Can } from "@/components/layout/Guard";
 import { ProductForm } from "@/features/catalog/components/ProductForm";
-import { Badge, Button, Checkbox, DataTable, Modal, PageHeader, Pagination, Panel, SearchInput, Select } from "@/components/ui";
+import { Badge, Button, Checkbox, DataTable, Modal, PageHeader, Pagination, Panel, SearchInput, Select, Stat } from "@/components/ui";
+
+type ProductTotals = { quantity: number; retail_value: number; cost_value?: number; expected_profit?: number };
 import { useT } from "@/lib/i18n";
 import { usePublicSettings } from "@/lib/public-settings";
 import { saveLabelSelection, selectionBody, type LabelSelection } from "@/features/catalog/labelSelection";
@@ -86,7 +88,9 @@ export default function ProductsPage() {
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
   const search = useDebounced(filters.search);
-  const list = useApi<Paginated<Product>>("admin/products", { ...filters, search, page, trashed: trashed ? "only" : undefined });
+  const list = useApi<Paginated<Product> & { summary?: ProductTotals }>("admin/products", { ...filters, search, page, trashed: trashed ? "only" : undefined });
+  const sum = list.data?.summary;
+  const onePage = (list.data?.meta?.last_page ?? 1) <= 1;
   const restore = useAction((id: number) => api.post(`admin/products/${id}/restore`), { invalidate: [["admin/products"]] });
   const set = (k: keyof typeof filters, v: string) => { setFilters((f) => ({ ...f, [k]: v })); setPage(1); setAllMatching(false); };
   const rows = list.data?.data ?? [];
@@ -112,6 +116,14 @@ export default function ProductsPage() {
           </>
         }
       />
+      {sum && !trashed && (
+        <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Stat label={t("Items in stock")} value={qty(sum.quantity)} />
+          {sum.cost_value !== undefined && <Stat label={t("Stock value at buying price")} value={money(sum.cost_value)} />}
+          <Stat label={t("Money after selling the stock")} value={money(sum.retail_value)} tone="brand" />
+          {sum.expected_profit !== undefined && <Stat label={t("Expected profit")} value={money(sum.expected_profit)} tone="saffron" />}
+        </div>
+      )}
       <Panel padded={false}>
         <div className="grid gap-3 border-b border-ink-100 p-3 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr_auto]">
           <SearchInput value={filters.search} onChange={(v) => set("search", v)} placeholder={t("Name, SKU, barcode or brand")} />
@@ -151,13 +163,15 @@ export default function ProductsPage() {
               </div>
             ) },
             { key: "category.name", header: t("Category"), hideOnMobile: true },
-            ...(can("products.view_cost") ? [{ key: "cost_price", header: t("Cost"), align: "right" as const, hideOnMobile: true, render: (r: Product) => money(r.cost_price) }] : []),
-            { key: "selling_price", header: t("Price"), align: "right", render: (r) => money(r.selling_price) },
-            { key: "stock_quantity", header: t("In stock"), align: "right", render: (r) => {
+            ...(can("products.view_cost") ? [{ key: "cost_price", header: t("Buying price"), align: "right" as const, hideOnMobile: true, total: false as const, render: (r: Product) => money(r.cost_price) }] : []),
+            { key: "selling_price", header: t("Selling price"), align: "right", total: false, render: (r) => <span title={r.branch_price ? t("This branch's own price") : undefined}>{money(r.selling_price)}{r.branch_price && <span className="ml-1 text-[10px] font-semibold text-brand-700">●</span>}</span> },
+            { key: "stock_quantity", header: t("In stock"), align: "right", total: "number", totalValue: onePage ? undefined : sum?.quantity, render: (r) => {
               if (r.is_service) return <span className="text-ink-400">{t("service")}</span>;
               const s = toNumber(r.stock_quantity);
               return <span className={s <= 0 ? "font-semibold text-ember-600" : s <= toNumber(r.reorder_level) ? "font-semibold text-saffron-700" : undefined}>{qty(s, r.unit?.short_name)}</span>;
             } },
+            ...(can("products.view_cost") ? [{ key: "stock_cost_value", header: t("Value at buying price"), align: "right" as const, hideOnMobile: true, total: "money" as const, totalValue: onePage ? undefined : sum?.cost_value, render: (r: Product) => money(r.stock_cost_value) }] : []),
+            { key: "stock_retail_value", header: t("Value at selling price"), align: "right", total: "money", totalValue: onePage ? undefined : sum?.retail_value, render: (r) => money(r.stock_retail_value) },
             { key: "flags", header: "", hideOnMobile: true, render: (r) => <span className="flex gap-1">{r.track_expiry && <Badge tone="blue">{t("Expiry")}</Badge>}{r.show_online && <Badge tone="green">{t("Online")}</Badge>}{!r.is_active && <Badge tone="red">{t("Inactive")}</Badge>}</span> },
             ...(trashed ? [{ key: "_r", header: "", align: "right" as const, render: (r: Product) => <Button size="sm" variant="secondary" icon={<RotateCcw className="size-3.5" />} onClick={() => restore.mutate(r.id)}>{t("Restore")}</Button> }] : []),
           ]}

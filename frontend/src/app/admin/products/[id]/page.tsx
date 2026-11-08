@@ -17,12 +17,14 @@ import { QrCode } from "@/features/catalog/components/QrCode";
 import { usePublicSettings } from "@/lib/public-settings";
 import { ProductUnitsPanel } from "@/features/catalog/components/ProductUnitsPanel";
 import { AiDescriptionPanel } from "@/features/catalog/components/AiDescriptionPanel";
+import { BranchPricesPanel, type BranchPrice } from "@/features/catalog/components/BranchPricesPanel";
 import { Badge, Button, ConfirmDialog, DataTable, DescriptionList, ErrorState, PageHeader, Panel, Spinner, Stat, Tabs } from "@/components/ui";
 import { useT } from "@/lib/i18n";
 
 type Detail = {
   product: Product & { creator?: { name: string } | null; updater?: { name: string } | null; created_at: string; updated_at: string };
   stocks: Array<{ id: number; quantity: string; branch: { name: string } }>;
+  branch_prices: BranchPrice[];
   total_stock: number;
   qr: string | null;
   batches: Array<{ id: number; batch_no: string | null; expiry_date: string | null; quantity_remaining: string; unit_cost?: string; branch: { name: string } }>;
@@ -49,8 +51,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   if (q.isLoading) return <Spinner variant="page" />;
   if (q.error || !q.data) return <ErrorState message={q.error?.message ?? t("Product not found.")} />;
-  const { product: p, stocks, total_stock, batches, movements, qr } = q.data.data;
+  const { product: p, stocks, total_stock, batches, movements, qr, branch_prices = [] } = q.data.data;
   const unit = p.unit?.short_name;
+  // What the stock is worth, using each branch's own prices where it has them.
+  const costValue = branch_prices.reduce((a, b) => a + b.quantity * (b.effective.cost_price ?? 0), 0);
+  const retailValue = branch_prices.reduce((a, b) => a + b.quantity * (b.effective.selling_price ?? 0), 0);
 
   return (
     <Guard perm="products.view">
@@ -67,12 +72,15 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           </>
         )}
       />
-      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-3">
         <Stat label={t("In stock (selected branches)")} value={qty(total_stock, unit)} tone={total_stock <= 0 ? "ember" : total_stock <= toNumber(p.reorder_level) ? "saffron" : "default"} sub={`Warn at ${qty(p.reorder_level, unit)}`} />
         <Stat label={t("Selling price")} value={money(p.selling_price)} sub={p.min_selling_price ? `Lowest allowed ${money(p.min_selling_price)}` : undefined} />
         {p.cost_price !== undefined && <Stat label={t("Buying price (landed)")} value={money(p.cost_price)} sub={`Margin ${money(toNumber(p.selling_price) - toNumber(p.cost_price))}`} />}
-        <Stat label={t("Stock value at price")} value={money(total_stock * toNumber(p.selling_price))} />
+        {p.cost_price !== undefined && <Stat label={t("Stock value at buying price")} value={money(costValue)} />}
+        <Stat label={t("Money after selling the stock")} value={money(retailValue)} tone="brand" sub={t("At each branch's selling price")} />
+        {p.cost_price !== undefined && <Stat label={t("Expected profit")} value={money(retailValue - costValue)} tone="saffron" />}
       </div>
+      {branch_prices.length > 0 && <div className="mb-5"><BranchPricesPanel productId={p.id} unit={unit} rows={branch_prices} /></div>}
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         <Panel padded={false}>
           <div className="px-3 pt-2"><Tabs value={tab} onChange={setTab} tabs={[{ value: "movements", label: t("Stock movements") }, { value: "batches", label: t("Batches ({count})", { count: batches.length }) }, ...(can("audit.changes") ? [{ value: "history" as const, label: t("Change history") }] : [])]} /></div>

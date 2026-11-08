@@ -13,6 +13,7 @@ use App\Models\Sales\Payment;
 use App\Models\Sales\Sale;
 use App\Models\Sales\SaleItem;
 use App\Models\Sales\SaleReturn;
+use App\Services\Catalog\BranchPrices;
 use App\Services\Catalog\PricingService;
 use App\Services\Core\AuditLogger;
 use App\Services\Core\NumberGenerator;
@@ -55,6 +56,7 @@ class SaleService
         private readonly PromotionService $promotions,
         private readonly StaffNotices $notices,
         private readonly OnlinePaymentService $online,
+        private readonly BranchPrices $branchPrices,
     ) {}
 
     /**
@@ -84,6 +86,7 @@ class SaleService
             $products = Product::query()->with('unit')
                 ->whereIn('id', collect($items)->pluck('product_id')->unique())
                 ->get()->keyBy('id');
+            $this->branchPrices->apply($products, $branchId);
             $units = ProductUnit::query()
                 ->whereIn('id', collect($items)->pluck('product_unit_id')->filter()->unique())
                 ->get()->keyBy('id');
@@ -296,10 +299,11 @@ class SaleService
      *
      * @return array{price_level: string, lines: array, subtotal: float, discount: float, tax: float, total: float}
      */
-    public function quote(array $data): array
+    public function quote(array $data, ?int $branchId = null): array
     {
         $items = $data['items'] ?? [];
         $products = Product::query()->with('unit')->whereIn('id', collect($items)->pluck('product_id')->unique())->get()->keyBy('id');
+        $this->branchPrices->apply($products, $branchId);
         $units = ProductUnit::query()->whereIn('id', collect($items)->pluck('product_unit_id')->filter()->unique())->get()->keyBy('id');
         $customer = ! empty($data['customer_id']) ? Customer::query()->find($data['customer_id']) : null;
         $level = $this->pricing->levelFor($customer, $data['price_level'] ?? null);

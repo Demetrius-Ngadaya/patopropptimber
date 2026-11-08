@@ -11,6 +11,7 @@ use App\Models\Sales\Order;
 use App\Models\Sales\OrderItem;
 use App\Models\Sales\OrderStatusHistory;
 use App\Models\Sales\Sale;
+use App\Services\Catalog\BranchPrices;
 use App\Services\Catalog\PricingService;
 use App\Services\Core\AuditLogger;
 use App\Services\Core\NumberGenerator;
@@ -79,6 +80,7 @@ class OrderService
             ])->values();
 
             $products = Product::query()->whereIn('id', $lines->pluck('product_id'))->get()->keyBy('id');
+            app(BranchPrices::class)->apply($products, $branch?->id);
             $allowNegative = $this->settings->bool('allow_negative_stock');
 
             // Wholesale customers see and pay wholesale prices online too.

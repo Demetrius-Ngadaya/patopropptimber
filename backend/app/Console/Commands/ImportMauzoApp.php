@@ -11,6 +11,7 @@ use App\Models\Core\User;
 use App\Models\Crm\Customer;
 use App\Models\Finance\ExpenseCategory;
 use App\Models\Purchasing\Supplier;
+use App\Services\Catalog\BranchPrices;
 use App\Services\Catalog\ProductService;
 use App\Services\Core\NumberGenerator;
 use App\Services\Finance\PostingService;
@@ -37,6 +38,10 @@ use Throwable;
  *
  *   php artisan mauzo:import-mauzoapp --database=pptimber_mauzo --dry-run
  *   php artisan mauzo:import-mauzoapp --database=pptimber_mauzo
+ *
+ * After an import, --update adds only what is still missing (sales, purchases,
+ * expenses, customers, staff, products, branch prices) and never adds anything twice.
+ * The old database is opened read-only: nothing in MauzoApp can be changed.
  */
 class ImportMauzoApp extends Command
 {
@@ -46,6 +51,7 @@ class ImportMauzoApp extends Command
         {--username= : Old database user (default: same as PatoPro)}
         {--password= : Old database password (asked for when --username is given; avoid typing it here)}
         {--dry-run : Do everything, show the summary, then undo it}
+        {--update : PatoPro was imported before: add only what is missing (safe to repeat)}
         {--force : Import even though PatoPro already has sales or products}';
 
     protected $description = 'Bring products, stock, staff, customers, debts and history from the old MauzoApp database into PatoPro';
@@ -75,11 +81,20 @@ class ImportMauzoApp extends Command
 
     private Connection $old;
 
+    private bool $update = false;
+
+    /** customer id => debt added by this run (posted to the books at the end) */
+    private array $debtAdded = [];
+
+    /** supplier id => amount owed added by this run */
+    private array $owedAdded = [];
+
     public function __construct(
         private readonly NumberGenerator $numbers,
         private readonly StockService $stock,
         private readonly PostingService $posting,
         private readonly ProductService $productService,
+        private readonly BranchPrices $branchPriceService,
     ) {
         parent::__construct();
     }
@@ -102,9 +117,18 @@ class ImportMauzoApp extends Command
             }
         }
 
-        if (! $this->option('force') && (DB::table('sales')->exists() || DB::table('products')->exists())) {
+        $this->update = (bool) $this->option('update');
+        $imported = DB::table('sales')->where('notes', 'like', self::NOTE.'%')->exists();
+        if ($this->update && ! $imported) {
+            $this->error('Nothing was imported from MauzoApp yet. Run the import without --update first.');
+
+            return self::FAILURE;
+        }
+        if (! $this->update && ! $this->option('force') && (DB::table('sales')->exists() || DB::table('products')->exists())) {
             $this->error('PatoPro already has products or sales. The import is meant for a fresh system.');
-            $this->line('Run it on an empty PatoPro, or add --force if you are sure (data would be added twice if it was imported before).');
+            $this->line($imported
+                ? 'MauzoApp data is already in PatoPro. To add only what is missing, run it again with --update.'
+                : 'Run it on an empty PatoPro, or add --force if you are sure.');
 
             return self::FAILURE;
         }
@@ -118,7 +142,7 @@ class ImportMauzoApp extends Command
         $this->adminId = $admin->id;
         auth()->setUser($admin);
 
-        $this->info('Importing from "'.$this->old->getDatabaseName().'"'.($this->option('dry-run') ? ' (dry run: nothing will be kept)' : '').' ...');
+        $this->info(($this->update ? 'Adding what is missing from "' : 'Importing from "').$this->old->getDatabaseName().'"'.($this->option('dry-run') ? ' (dry run: nothing will be kept)' : '').' ...');
 
         DB::beginTransaction();
         try {
@@ -242,7 +266,7 @@ class ImportMauzoApp extends Command
             $count++;
         }
 
-        $this->summary['Staff'] = "{$count} added (same passwords as before). Usernames: ".implode(', ', $logins);
+        $this->summary['Staff'] = $count ? "{$count} added (same passwords as before). Usernames: ".implode(', ', $logins) : 'no new staff';
     }
 
     private function importProducts(): void
@@ -262,6 +286,17 @@ class ImportMauzoApp extends Command
             $name = $this->clean($priceRow->medicine_name);
             $category = $this->category($priceRow->category);
             $unitId = $this->unitId($priceRow->sell_type, $unit?->id);
+
+            $existing = Product::withTrashed()->whereRaw('LOWER(name) = ?', [Str::lower($name)])->first();
+            if ($existing) {
+                foreach ($rowsOfProduct as $row) {
+                    $this->products[(int) $row->id] = $existing->id;
+                }
+                $this->branchPrices($existing, $rowsOfProduct);
+                $this->compareStock($existing, $rowsOfProduct);
+
+                continue;
+            }
 
             $product = $this->productService->create([
                 'name' => $name,
@@ -291,12 +326,11 @@ class ImportMauzoApp extends Command
                 $stockValue += $qty * $cost;
             }
 
-            if ($rowsOfProduct->pluck('selling_price')->unique()->count() > 1) {
-                $this->warnings[] = "\"{$name}\" had different prices per branch in MauzoApp; PatoPro uses one price: ".number_format((float) $priceRow->selling_price).'.';
-            }
+            $this->branchPrices($product, $rowsOfProduct);
         }
 
-        $this->summary['Products'] = "{$created} products; opening stock in {$stockLines} branch lines worth ".number_format($stockValue).' at cost';
+        $this->summary['Products'] = "{$created} new products".($stockLines ? "; opening stock in {$stockLines} branch lines worth ".number_format($stockValue).' at cost' : '')
+            .($this->pricedBranches ? "; {$this->pricedBranches} branch price lines" : '');
     }
 
     private function importCustomers(): void
@@ -309,6 +343,13 @@ class ImportMauzoApp extends Command
             $first = $group->first();
             $name = $this->clean($first->customer_name);
             if ($name === '' || $this->isTransferCustomer($name) || isset($this->customers[$key])) {
+                continue;
+            }
+            $branchForCustomer = $this->branches[(int) $first->store_id] ?? $this->mainBranchId();
+            $existing = Customer::withTrashed()->where('branch_id', $branchForCustomer)->whereRaw('LOWER(name) = ?', [Str::lower($name)])->value('id');
+            if ($existing) {
+                $this->customers[$key] = $existing;
+
                 continue;
             }
             $phone = $this->phone($group->pluck('phone_number')->filter()->last());
@@ -326,20 +367,24 @@ class ImportMauzoApp extends Command
             $this->customers[$key] = $customer->id;
             $count++;
         }
-        $this->summary['Customers'] = "{$count} credit customers";
+        $this->summary['Customers'] = "{$count} new credit customers";
     }
 
     private function importSales(): void
     {
         $rows = $this->old->table('sales')->orderBy('id')->get();
+        $archived = $this->archivedSales($rows);
+        $rows = $rows->concat($archived);
         $now = now();
+        $skipped = 0;
         $sales = 0;
         $lines = 0;
         $total = 0.0;
         $unpaid = 0.0;
         $usedNumbers = [];
-        $paymentNo = 0;
+        $paymentNo = $this->lastNumber('payments', 'MA-RCP-');
         $balances = [];
+        $added = [];
 
         // In MauzoApp one invoice could mix customers and cash/credit lines. In PatoPro each
         // (invoice, customer, payment) becomes its own sale so debts stay with the right person.
@@ -357,7 +402,14 @@ class ImportMauzoApp extends Command
             $soldAt = $this->dateTime($first->Date, 12);
             $cashierId = $this->userId($first->created_by);
 
-            $number = $this->uniqueNumber($this->clean($first->invoice_number) ?: 'MA-'.$first->id, $usedNumbers);
+            $base = $this->clean($first->invoice_number) ?: 'MA-'.$first->id;
+            $groupTotal = round((float) $group->sum(fn ($r) => (float) $r->total_amount), 2);
+            if ($this->update && $this->saleExists($base, $branchId, substr((string) $soldAt, 0, 10), $groupTotal, $usedNumbers)) {
+                $skipped++;
+
+                continue;
+            }
+            $number = $this->uniqueNumber($base, $usedNumbers);
 
             $sum = 0.0;
             $cost = 0.0;
@@ -424,7 +476,7 @@ class ImportMauzoApp extends Command
                 'due_date' => $credit ? ($group->pluck('date_to_pay')->filter()->first() ?: null) : null,
                 'fully_paid_at' => $balance > 0 ? null : $paidAt,
                 'sold_at' => $soldAt,
-                'notes' => self::NOTE.' (invoice '.$this->clean($first->invoice_number).')',
+                'notes' => self::NOTE.' (invoice '.$this->clean($first->invoice_number).')'.($first->archived ?? false ? ' – found only in MauzoApp\'s transfers list' : ''),
                 'created_by' => $cashierId,
                 'updated_by' => $cashierId,
                 'created_at' => $soldAt,
@@ -465,10 +517,18 @@ class ImportMauzoApp extends Command
         }
 
         foreach ($balances as $customerId => $amount) {
-            DB::table('customers')->where('id', $customerId)->update(['balance' => round($amount, 2)]);
+            DB::table('customers')->where('id', $customerId)->increment('balance', round($amount, 2));
+            $this->debtAdded[$customerId] = ($this->debtAdded[$customerId] ?? 0) + round($amount, 2);
         }
 
-        $this->summary['Sales'] = "{$sales} sales ({$lines} lines) worth ".number_format($total).'; unpaid customer debts '.number_format($unpaid);
+        $this->summary['Sales'] = "{$sales} ".($this->update ? 'missing sales added' : 'sales')." ({$lines} lines) worth ".number_format($total).'; unpaid customer debts '.number_format($unpaid)
+            .($this->update ? "; {$skipped} already in PatoPro" : '');
+        $realArchived = $archived->count();
+        if ($realArchived) {
+            $this->warnings[] = "{$realArchived} sale lines (".number_format($archived->sum(fn ($r) => (float) $r->total_amount)).') were deleted from MauzoApp\'s sales list but kept in its transfers list; they are included and marked "found only in MauzoApp\'s transfers list": '
+                .$archived->map(fn ($r) => $this->clean($r->invoice_number).' '.$r->Date.' '.$this->clean($r->customer_name).' '.number_format((float) $r->total_amount))->implode('; ')
+                .'. Delete them in PatoPro if they were cancelled sales.';
+        }
     }
 
     private function importPurchases(): void
@@ -476,6 +536,8 @@ class ImportMauzoApp extends Command
         $rows = $this->old->table('purchases_report')->orderBy('id')->get();
         $now = now();
         $count = 0;
+        $numberNo = $this->lastNumber('purchases', 'MA-PUR-');
+        $skipped = 0;
         $total = 0.0;
         $owed = 0.0;
         $lastGoodDate = null;
@@ -503,6 +565,17 @@ class ImportMauzoApp extends Command
             $unpaid = in_array($status, ['credit', 'not paid'], true);
             $userId = $this->userId($first->created_by);
             $date = $first->received_date;
+            if ($this->update) {
+                $groupSubtotal = round((float) $group->sum(fn ($r) => (float) $r->received_quantity * (float) ($r->actual_price ?: $r->products_cost)), 2);
+                $exists = DB::table('purchases')->where('branch_id', $branchId)->whereDate('purchase_date', $date)
+                    ->where('supplier_id', $supplierId)->whereBetween('subtotal', [$groupSubtotal - 0.01, $groupSubtotal + 0.01])
+                    ->where('notes', 'like', self::NOTE.'%')->exists();
+                if ($exists) {
+                    $skipped++;
+
+                    continue;
+                }
+            }
 
             $subtotal = 0.0;
             $extras = ['tax_cost' => 0.0, 'loading_cost' => 0.0, 'unloading_cost' => 0.0, 'transport_cost' => 0.0, 'other_cost' => 0.0];
@@ -546,7 +619,7 @@ class ImportMauzoApp extends Command
             $balance = $unpaid ? $supplierTotal : 0.0;
 
             $purchaseId = DB::table('purchases')->insertGetId([
-                'number' => sprintf('MA-PUR-%05d', ++$count),
+                'number' => sprintf('MA-PUR-%05d', ++$numberNo),
                 'branch_id' => $branchId,
                 'supplier_id' => $supplierId,
                 'supplier_invoice_no' => $this->clean($first->receipt_number) ?: null,
@@ -577,17 +650,20 @@ class ImportMauzoApp extends Command
                 $owed += $balance;
             }
             $total += $grand;
+            $count++;
         }
 
         foreach ($supplierBalances as $supplierId => $amount) {
-            DB::table('suppliers')->where('id', $supplierId)->update(['balance' => round($amount, 2)]);
+            DB::table('suppliers')->where('id', $supplierId)->increment('balance', round($amount, 2));
+            $this->owedAdded[$supplierId] = ($this->owedAdded[$supplierId] ?? 0) + round($amount, 2);
         }
         $repaired = $rows->where('date_repaired', true)->count();
         if ($repaired) {
             $this->warnings[] = "{$repaired} purchase lines had no date in MauzoApp (1970-01-01); they were given the date of the purchase before them.";
         }
 
-        $this->summary['Purchases'] = "{$count} purchases from ".count($this->suppliers).' suppliers worth '.number_format($total).'; unpaid to suppliers '.number_format($owed);
+        $this->summary['Purchases'] = "{$count} ".($this->update ? 'missing purchases added' : 'purchases').' from '.count($this->suppliers).' suppliers worth '.number_format($total).'; unpaid to suppliers '.number_format($owed)
+            .($this->update ? "; {$skipped} already in PatoPro" : '');
     }
 
     private function importExpenses(): void
@@ -595,6 +671,7 @@ class ImportMauzoApp extends Command
         $categories = ExpenseCategory::query()->pluck('id', 'name');
         $now = now();
         $count = 0;
+        $skipped = 0;
         $total = 0.0;
         foreach ($this->old->table('expenditure')->orderBy('expenditure_id')->get() as $r) {
             $title = $this->clean($r->expenditure_name) ?: 'Matumizi';
@@ -610,8 +687,14 @@ class ImportMauzoApp extends Command
             };
             $date = $this->date($r->created_at) ?? $now->toDateString();
             $userId = $this->userId($r->created_by);
+            $number = sprintf('MA-EXP-%05d', $r->expenditure_id);
+            if (DB::table('expenses')->where('number', $number)->exists()) {
+                $skipped++;
+
+                continue;
+            }
             DB::table('expenses')->insert([
-                'number' => sprintf('MA-EXP-%05d', $r->expenditure_id),
+                'number' => $number,
                 'branch_id' => $this->branches[(int) $r->store_id] ?? $this->mainBranchId(),
                 'expense_category_id' => $categories[$category] ?? $categories['Other'] ?? null,
                 'title' => Str::limit($title, 250, ''),
@@ -627,7 +710,7 @@ class ImportMauzoApp extends Command
             $count++;
             $total += (float) $r->expenditure_amount;
         }
-        $this->summary['Expenses'] = "{$count} expenses worth ".number_format($total);
+        $this->summary['Expenses'] = "{$count} ".($this->update ? 'missing expenses added' : 'expenses').' worth '.number_format($total).($this->update ? "; {$skipped} already in PatoPro" : '');
     }
 
     /** Customer and supplier debts brought forward into the books (opening stock is posted per product). */
@@ -639,29 +722,34 @@ class ImportMauzoApp extends Command
             return;
         }
         $date = now()->toDateString();
-        foreach (Customer::query()->where('balance', '>', 0)->get() as $c) {
+        // Only the debts this run added (an --update run adds just the missing ones).
+        foreach (Customer::query()->whereIn('id', array_keys(array_filter($this->debtAdded)))->get() as $c) {
+            $amount = round((float) $this->debtAdded[$c->id], 2);
             $this->posting->post([
                 'date' => $date,
                 'description' => "Opening debt of {$c->name} (MauzoApp)",
                 'event' => 'opening_receivable',
                 'branch_id' => $c->branch_id,
             ], [
-                ['account' => 'receivable', 'debit' => (float) $c->balance, 'customer_id' => $c->id],
-                ['account' => 'opening_equity', 'credit' => (float) $c->balance],
+                ['account' => 'receivable', 'debit' => $amount, 'customer_id' => $c->id],
+                ['account' => 'opening_equity', 'credit' => $amount],
             ], $c);
         }
-        foreach (Supplier::query()->where('balance', '>', 0)->get() as $s) {
+        foreach (Supplier::query()->whereIn('id', array_keys(array_filter($this->owedAdded)))->get() as $s) {
+            $amount = round((float) $this->owedAdded[$s->id], 2);
             $this->posting->post([
                 'date' => $date,
                 'description' => "Opening balance owed to {$s->name} (MauzoApp)",
                 'event' => 'opening_payable',
                 'branch_id' => null,
             ], [
-                ['account' => 'opening_equity', 'debit' => (float) $s->balance],
-                ['account' => 'payable', 'credit' => (float) $s->balance, 'supplier_id' => $s->id],
+                ['account' => 'opening_equity', 'debit' => $amount],
+                ['account' => 'payable', 'credit' => $amount, 'supplier_id' => $s->id],
             ], $s);
         }
-        $this->summary['Accounting'] = 'opening stock, customer debts and supplier debts posted to the books on '.$date;
+        $this->summary['Accounting'] = $this->debtAdded || $this->owedAdded || ! $this->update
+            ? 'opening stock, customer debts and supplier debts posted to the books on '.$date
+            : 'nothing new to post';
     }
 
     // -------------------------------------------------------------- helpers
@@ -680,6 +768,12 @@ class ImportMauzoApp extends Command
         DB::purge('mauzoapp_legacy');
         $connection = DB::connection('mauzoapp_legacy');
         $connection->getPdo();
+        // Read-only session: this command cannot change anything in MauzoApp, even by mistake.
+        try {
+            $connection->statement('SET SESSION TRANSACTION READ ONLY');
+        } catch (Throwable) {
+            // Very old servers lack this; the command only ever reads anyway.
+        }
 
         return $connection;
     }
@@ -707,6 +801,107 @@ class ImportMauzoApp extends Command
         $this->info($this->option('dry-run')
             ? 'Dry run finished: nothing was saved. Run again without --dry-run to import.'
             : 'Import finished. The old database was only read, never changed.');
+    }
+
+    private int $pricedBranches = 0;
+
+    /**
+     * Each MauzoApp branch kept its own buying and selling price. Where a branch's price
+     * differs from the product's, it becomes that branch's own price in PatoPro.
+     */
+    private function branchPrices(Product $product, $rowsOfProduct): void
+    {
+        foreach ($rowsOfProduct->groupBy('store_id') as $storeId => $storeRows) {
+            $branchId = $this->branches[(int) $storeId] ?? null;
+            if (! $branchId) {
+                continue;
+            }
+            $row = $storeRows->sortByDesc('id')->first();
+            $cost = (float) $row->actual_price;
+            $sell = (float) $row->selling_price;
+            $prices = [
+                'cost_price' => abs($cost - (float) $product->cost_price) > 0.001 && $cost > 0 ? $cost : null,
+                'selling_price' => abs($sell - (float) $product->selling_price) > 0.001 && $sell > 0 ? $sell : null,
+            ];
+            $current = DB::table('product_stocks')->where('product_id', $product->id)->where('branch_id', $branchId)->first(['cost_price', 'selling_price']);
+            $same = $current && (float) $current->cost_price === (float) ($prices['cost_price'] ?? 0) && (float) $current->selling_price === (float) ($prices['selling_price'] ?? 0)
+                && ($current->cost_price === null) === ($prices['cost_price'] === null) && ($current->selling_price === null) === ($prices['selling_price'] === null);
+            if ($same || (! $current && $prices['cost_price'] === null && $prices['selling_price'] === null)) {
+                continue;
+            }
+            $this->branchPriceService->set($product, $branchId, $prices);
+            if ($prices['cost_price'] !== null || $prices['selling_price'] !== null) {
+                $this->pricedBranches++;
+            }
+        }
+    }
+
+    /** --update: shows where MauzoApp's stock now differs from PatoPro's (nothing is changed). */
+    private function compareStock(Product $product, $rowsOfProduct): void
+    {
+        if (! $this->update) {
+            return;
+        }
+        foreach ($rowsOfProduct->groupBy('store_id') as $storeId => $storeRows) {
+            $branchId = $this->branches[(int) $storeId] ?? null;
+            if (! $branchId) {
+                continue;
+            }
+            $old = (float) $storeRows->sum(fn ($r) => (float) $r->remain_quantity);
+            $new = (float) DB::table('product_stocks')->where('product_id', $product->id)->where('branch_id', $branchId)->value('quantity');
+            if (abs($old - $new) > 0.0005) {
+                $branch = Branch::query()->whereKey($branchId)->value('name');
+                $this->warnings[] = "Stock of \"{$product->name}\" at {$branch}: MauzoApp shows ".(0 + $old).', PatoPro shows '.(0 + $new).'. If sales happened in MauzoApp after the import, correct it with a stock adjustment.';
+            }
+        }
+    }
+
+    /**
+     * Sale lines that MauzoApp removed from its `sales` table but kept in `transfers`
+     * (its copy of sales). Test entries ("test mfumo") are left out.
+     */
+    private function archivedSales($sales)
+    {
+        if (! $this->old->getSchemaBuilder()->hasTable('transfers')) {
+            return collect();
+        }
+        $key = fn ($r) => implode('|', [$this->clean($r->invoice_number), (int) $r->medicine_id, (string) (0 + (float) $r->quantity), round((float) $r->total_amount, 2), (int) $r->store_id]);
+        $known = $sales->mapWithKeys(fn ($r) => [$key($r) => true]);
+
+        return $this->old->table('transfers')->orderBy('id')->get()
+            ->reject(fn ($r) => isset($known[$key($r)]))
+            ->reject(fn ($r) => Str::contains(Str::lower($r->medicines.' '.$r->customer_name), 'test'))
+            ->map(function ($r) {
+                $r->archived = true;
+
+                return $r;
+            })->values();
+    }
+
+    /** --update: is this old sale already in PatoPro (same invoice, branch, day and total)? */
+    private function saleExists(string $base, int $branchId, string $day, float $total, array &$used): bool
+    {
+        $base = Str::limit($base, 24, '');
+        $match = DB::table('sales')->where('branch_id', $branchId)
+            ->where(fn ($q) => $q->where('number', $base)->orWhere('number', 'like', $base.'-%'))
+            ->whereDate('sold_at', $day)
+            ->whereBetween('total', [$total - 0.01, $total + 0.01])
+            ->whereNotIn('number', array_keys($used))
+            ->value('number');
+        if ($match) {
+            $used[$match] = true;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private function lastNumber(string $table, string $prefix): int
+    {
+        $last = DB::table($table)->where('number', 'like', $prefix.'%')->orderByDesc('number')->value('number');
+
+        return $last ? (int) substr($last, strlen($prefix)) : 0;
     }
 
     private function mainOldStoreId(): int

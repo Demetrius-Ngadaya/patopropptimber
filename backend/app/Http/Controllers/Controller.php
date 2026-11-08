@@ -41,7 +41,8 @@ abstract class Controller
 
     protected function perPage(Request $request, int $default = 25): int
     {
-        return min(max((int) $request->integer('per_page', $default), 5), 200);
+        // Up to 5000: the "All" choice under each list (very large lists still page).
+        return min(max((int) $request->integer('per_page', $default), 5), 5000);
     }
 
     /** ?trashed=only shows deleted records, ?trashed=with shows both. */

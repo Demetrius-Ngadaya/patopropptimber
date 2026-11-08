@@ -28,6 +28,11 @@ export type SessionUser = {
 export type Product = {
   id: number;
   name: string;
+  /** Stock value at buying / selling price (list only; each branch's own prices). */
+  stock_cost_value?: string | number;
+  stock_retail_value?: string | number;
+  /** The prices shown are the selected branch's own prices. */
+  branch_price?: boolean;
   slug?: string;
   sku: string | null;
   barcode: string | null;
