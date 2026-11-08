@@ -1,0 +1,3 @@
+module.exports=[80476,a=>{"use strict";var b=a.i(87924),c=a.i(38246),d=a.i(50944),e=a.i(90075);a.i(85649);var f=a.i(79529);a.s(["f",0,function(){let a=(0,f.G)(),g=(0,d.usePathname)(),h=[{href:"/account/orders",label:a("My orders")},{href:"/account",label:a("My details")}];return(0,b.jsx)("nav",{className:"mb-6 flex gap-1 border-b border-ink-200","aria-label":a("Account"),children:h.map(a=>{let d="/account"===a.href?"/account"===g:g.startsWith(a.href);return(0,b.jsx)(c.default,{href:a.href,className:(0,e.c)("-mb-px border-b-2 px-3 py-2.5 text-sm font-medium",d?"border-brand-600 text-ink-950":"border-transparent text-ink-500 hover:text-ink-800"),children:a.label},a.href)})})}])}];
+
+//# sourceMappingURL=src_features_shop_components_AccountNav_tsx_0zjs0thj6ho0q._.js.map
