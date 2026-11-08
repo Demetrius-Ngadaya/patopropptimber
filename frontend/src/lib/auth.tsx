@@ -27,6 +27,26 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const USER_KEY = "patopro.session-user.v1";
+
+function recalledUser(): SessionUser | null {
+  try {
+    const raw = window.localStorage.getItem(USER_KEY);
+    return raw ? (JSON.parse(raw) as SessionUser) : null;
+  } catch {
+    return null;
+  }
+}
+
+function rememberUser(user: SessionUser | null) {
+  try {
+    if (user) window.localStorage.setItem(USER_KEY, JSON.stringify(user));
+    else window.localStorage.removeItem(USER_KEY);
+  } catch {
+    // Private mode: nothing is remembered; pages just wait for the session check.
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const t = useT();
   const [user, setUser] = useState<SessionUser | null>(null);
@@ -39,9 +59,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await api.get<ApiResponse<SessionUser>>("auth/me");
       setUser(res.data);
+      rememberUser(res.data);
       return res.data;
     } catch {
       setUser(null);
+      rememberUser(null);
       return null;
     } finally {
       setLoading(false);
@@ -49,6 +71,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // Show the last signed-in user straight away so pages start loading their data now,
+    // while the server confirms the session in the background (the server still checks
+    // every request; a stale copy is replaced or cleared within a moment).
+    const cached = recalledUser();
+    if (cached) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- browser storage is only readable after mount
+      setUser(cached);
+      setLoading(false);
+    }
     refresh();
   }, [refresh]);
 
@@ -81,6 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         /* cookie is cleared server side anyway */
       }
       setUser(null);
+      rememberUser(null);
       queryClient.clear();
       if (message) toast.info(message);
       router.replace(wasStaff ? "/login" : "/");
@@ -94,6 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const message = (e as CustomEvent<string>).detail;
       if (!user) return;
       setUser(null);
+      rememberUser(null);
       queryClient.clear();
       toast.error(message || t("Your session has ended. Please log in again."));
       const path = window.location.pathname;
@@ -116,7 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ user, loading, can, branchId, setBranch, refresh, setUser, logout }),
+    () => ({ user, loading, can, branchId, setBranch, refresh, setUser: (u: SessionUser | null) => { rememberUser(u); setUser(u); }, logout }),
     [user, loading, can, branchId, setBranch, refresh, logout],
   );
 

@@ -20,6 +20,7 @@ if [[ "$PART" == "all" || "$PART" == "backend" ]]; then
   $COMPOSER install --no-dev --optimize-autoloader --no-interaction
   $PHP artisan migrate --force
   $PHP artisan mauzo:sync-permissions
+  $PHP artisan mauzo:optimize-slides
   $PHP artisan storage:link 2>/dev/null || true
   $PHP artisan optimize:clear
   $PHP artisan config:cache

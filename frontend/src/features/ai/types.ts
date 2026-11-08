@@ -1,6 +1,6 @@
 export type AiStatus = { enabled: boolean; assistant_available: boolean; provider: string; model: string | null; in_house_features: string[]; budget: { monthly_tokens: number; used: number } };
 
-export type AiMessage = { id: number; role: "user" | "assistant"; content: string; tool_calls: Array<{ name: string; input?: unknown }> | null; created_at: string };
+export type AiMessage = { id: number; role: "user" | "assistant"; content: string; tool_calls: Array<{ tool?: string; name?: string; input?: unknown }> | null; created_at: string };
 export type AiConversation = { id: number; title: string; last_message_at: string | null; messages?: AiMessage[] };
 
 export type Insight = { key: string; type: "positive" | "warning" | "critical" | "info"; title: string; detail: string; link: string };

@@ -95,7 +95,7 @@ class DeliveryService
                 'order_id' => $source instanceof Order ? $source->id : null,
                 'sale_id' => $source instanceof Sale ? $source->id : $source->sale_id,
                 'customer_id' => $source->customer_id,
-                'customer_name' => $source->customer?->name ?? ($source instanceof Sale ? ($source->customer_name ?: __('Walk-in customer')) : '-'),
+                'customer_name' => $source->customer?->name ?? ($source instanceof Sale ? ($source->customer_name ?: __('Customer')) : '-'),
                 'contact_phone' => $data['contact_phone'] ?? ($source instanceof Order ? $source->contact_phone : ($source->customer_phone ?? $source->customer?->phone)),
                 'address' => $data['address'] ?? ($source instanceof Order ? $source->delivery_address : $source->customer?->address),
                 'latitude' => $lat,

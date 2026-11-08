@@ -377,7 +377,7 @@ function PosScreen() {
               </div>
             )}
             {!customer && (
-              <Input className="mt-2 h-9" placeholder={t("Walk-in customer name (optional)")} value={walkInName} onChange={(e) => setWalkInName(e.target.value)} aria-label={t("Walk-in customer name")} />
+              <Input className="mt-2 h-9" placeholder={t("Customer name (optional)")} value={walkInName} onChange={(e) => setWalkInName(e.target.value)} aria-label={t("Customer name")} />
             )}
           </div>
 
@@ -573,7 +573,7 @@ function PosScreen() {
             {held.data.data.map((h) => (
               <li key={h.id} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{h.label ?? h.customer?.name ?? t("Walk-in customer")}</p>
+                  <p className="truncate text-sm font-medium">{h.label ?? h.customer?.name ?? t("Customer")}</p>
                   <p className="text-xs text-ink-500">
                     {t("{count} item(s), {created_at}, by {name}", { count: h.cart.length, created_at: dateTime(h.created_at), name: h.user?.name })}
                   </p>

@@ -8,6 +8,7 @@ import { useCart, type ShopProduct } from "@/features/shop/cart";
 import { usePublicSettings } from "@/lib/public-settings";
 import { cn } from "@/lib/format";
 import { ProductCard } from "@/features/shop/components/ProductCard";
+import { LoginSlider, type LoginSlide } from "@/features/auth/components/LoginSlider";
 import { Button, EmptyState, ErrorState, Select, Spinner } from "@/components/ui";
 import { useT } from "@/lib/i18n";
 
@@ -26,6 +27,8 @@ function Catalog() {
   const [perPage, setPerPage] = useState(24);
   const categories = useApi<ApiResponse<Category[]>>("shop/categories");
   const branches = useApi<ApiResponse<ShopBranch[]>>("shop/branches");
+  // Same request as the slider itself (shared cache): decides between pictures and the text heading.
+  const shopSlides = useApi<ApiResponse<LoginSlide[]>>("public/login-slides", { place: "shop" }, { enabled: Boolean(settings?.shop_hero_slides) });
   const products = useApi<Paginated<ShopProduct>>("shop/products", { search, category, sort, per_page: perPage, branch_id: branchId ?? undefined });
 
   useEffect(() => {
@@ -47,17 +50,28 @@ function Catalog() {
 
   return (
     <>
-      {!search && !category && (
-        <section className="mb-8 overflow-hidden rounded-xl bg-night-900 px-6 py-8 text-white sm:px-10 sm:py-12">
-          <h1 className="max-w-xl text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">{settings?.shop_tagline || t("Order from {value} and collect or get it delivered.", { value: settings?.business_name ?? "our shop" })}</h1>
-          <p className="mt-3 max-w-lg text-ink-300">
-            {settings?.online_payments_shop
-              ? t("Pay now with mobile money, or when you collect or it arrives.")
-              : <>{t("Pay when you collect or when it arrives")}{settings?.shop_delivery_enabled ? "" : t(" at the counter")}.</>}
-            {settings && Number(settings.shop_min_order_amount) > 0 && t(" Minimum order {currency} {shop_min_order_amount}.", { currency: settings.currency, shop_min_order_amount: Number(settings.shop_min_order_amount).toLocaleString() })}
-          </p>
-        </section>
-      )}
+      {!search && !category && (() => {
+        const textHero = (
+          <section className="mb-8 overflow-hidden rounded-xl bg-night-900 px-6 py-8 text-white sm:px-10 sm:py-12">
+            <h1 className="max-w-xl text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">{settings?.shop_tagline || t("Order from {value} and collect or get it delivered.", { value: settings?.business_name ?? "our shop" })}</h1>
+            <p className="mt-3 max-w-lg text-ink-300">
+              {settings?.shop_hero_subtitle
+                ? settings.shop_hero_subtitle
+                : settings?.online_payments_shop
+                  ? t("Pay now with mobile money, or when you collect or it arrives.")
+                  : <>{t("Pay when you collect or when it arrives")}{settings?.shop_delivery_enabled ? "" : t(" at the counter")}.</>}
+              {!settings?.shop_hero_subtitle && settings && Number(settings.shop_min_order_amount) > 0 && t(" Minimum order {currency} {shop_min_order_amount}.", { currency: settings.currency, shop_min_order_amount: Number(settings.shop_min_order_amount).toLocaleString() })}
+            </p>
+          </section>
+        );
+        // The admin chooses: the heading text, or their own pictures (Administration → Pictures).
+        if (!settings?.shop_hero_slides || (shopSlides.data && !shopSlides.data.data.length)) return textHero;
+        return (
+          <section className="relative mb-8 aspect-[16/9] max-h-[440px] w-full overflow-hidden rounded-xl bg-night-900 sm:aspect-[16/6]">
+            <LoginSlider place="shop" className="rounded-xl" />
+          </section>
+        );
+      })()}
 
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>

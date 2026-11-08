@@ -111,7 +111,7 @@ class CustomerMessages
             'title' => __('Receipt :number', ['number' => $sale->number]),
             'subtitle' => $sale->sold_at?->format('d/m/Y H:i').' · '.$sale->branch?->name,
             'meta' => array_filter([
-                __('Customer') => $sale->customer?->name ?? $sale->customer_name ?? __('Walk-in customer'),
+                __('Customer') => $sale->customer?->name ?? $sale->customer_name ?? __('Customer'),
                 __('Served by') => $sale->cashier?->name,
                 __('Payment status') => __(ucfirst((string) $sale->payment_status)),
                 __('Due date') => $owes ? $sale->due_date?->format('d/m/Y') : null,

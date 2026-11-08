@@ -78,7 +78,7 @@ export default function PromotionPage({ params }: { params: Promise<{ id: string
             onRowClick={(r) => r.sale && router.push(`/admin/sales/${r.sale.id}`)}
             columns={[
               { key: "sale", header: t("Sale"), render: (r) => <span>{r.sale?.number ?? "—"}<span className="block text-xs text-ink-500">{dateTime(r.created_at)}</span></span> },
-              { key: "customer", header: t("Customer"), render: (r) => r.customer?.name ?? t("Walk-in customer") },
+              { key: "customer", header: t("Customer"), render: (r) => r.customer?.name ?? t("Customer") },
               { key: "total", header: t("Sale total"), align: "right", render: (r) => <span className="num">{money(r.sale?.total)}</span> },
               { key: "amount", header: t("Discount"), align: "right", render: (r) => <span className="num font-medium text-brand-700">{money(r.amount)}</span> },
             ]}

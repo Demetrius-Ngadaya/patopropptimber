@@ -58,7 +58,7 @@ export default function Sales() {
               <ListRow
                 icon={s.status === 'cancelled' ? 'close-circle-outline' : state.icon}
                 iconTone={s.status === 'cancelled' ? 'neutral' : state.tone}
-                title={`${s.number ?? s.local_number} · ${s.customer_name ?? t('Walk-in')}`}
+                title={`${s.number ?? s.local_number} · ${s.customer_name ?? t('Customer')}`}
                 subtitle={`${time(s.sold_at)} · ${(s.items_count === 1 ? t('1 item') : t('{n} items', { n: s.items_count }))}${s.sync_state !== 'synced' ? ` · ${t(state.label)}` : ''}`}
                 right={
                   <View style={{ alignItems: 'flex-end', gap: 2 }}>

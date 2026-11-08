@@ -79,7 +79,7 @@ class ReportController extends Controller
             $totals = $onlyPage ? $this->sumRows($report['columns'], $rows) : ($report['totals'] ?? []);
             $audit->event('report.exported', "Exported {$report['title']} ({$format})", null, ['filters' => $filters, 'scope' => $onlyPage ? 'page' : 'all']);
 
-            return $exporter->download($format, $report['title'], ['__sn' => ['label' => __('S/N'), 'type' => 'text']] + $report['columns'], $rows, $totals, $filters + $report['period']);
+            return $exporter->download($format, $report['title'], ['__sn' => ['label' => __('S/N'), 'type' => 'text']] + $report['columns'], $rows, $totals, $filters + (in_array('date_from', $definition['filters'], true) ? $report['period'] : []));
         }
 
         if (isset($report['query'])) {

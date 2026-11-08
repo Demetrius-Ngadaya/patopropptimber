@@ -52,7 +52,7 @@ export default function SalesPage() {
           columns={[
             { key: "number", header: t("Receipt"), render: (r) => <span className="font-medium text-ink-900">{r.number}</span> },
             { key: "sold_at", header: t("Date"), render: (r) => dateTime(r.sold_at) },
-            { key: "customer_name", header: t("Customer"), render: (r) => r.customer?.name ?? r.customer_name ?? <span className="text-ink-400">{t("Walk-in")}</span> },
+            { key: "customer_name", header: t("Customer"), render: (r) => r.customer?.name ?? r.customer_name ?? <span className="text-ink-500">{t("Customer")}</span> },
             { key: "cashier.name", header: t("Cashier"), hideOnMobile: true },
             { key: "channel", header: t("Channel"), hideOnMobile: true, render: (r) => <span className="capitalize">{r.channel}</span> },
             { key: "total", header: t("Total"), align: "right", render: (r) => money(r.total) },

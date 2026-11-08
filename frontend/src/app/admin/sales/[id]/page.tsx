@@ -168,7 +168,7 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
         <div className="space-y-5">
           <Panel title={t("Details")}>
             <DescriptionList items={[
-              ["Customer", s.customer ? <Link className="text-brand-700 hover:underline" href={`/admin/customers/${s.customer.id}`}>{s.customer.name}</Link> : s.customer_name ?? "Walk-in"],
+              ["Customer", s.customer ? <Link className="text-brand-700 hover:underline" href={`/admin/customers/${s.customer.id}`}>{s.customer.name}</Link> : s.customer_name ?? t("Customer")],
               ["Phone", s.customer_phone],
               ["Cashier", s.cashier?.name],
               ["Branch", s.branch?.name],

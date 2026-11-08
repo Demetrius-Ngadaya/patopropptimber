@@ -343,7 +343,7 @@ class FinancialReportService
             ->with('customer:id,name,phone')
             ->get(['id', 'customer_id', 'customer_name', 'customer_phone', 'sold_at', 'due_date', 'balance']);
 
-        return $this->age($sales, $asOf, fn (Sale $s) => [$s->customer_id ?? 'walk-in', $s->customer?->name ?? $s->customer_name ?? __('Walk-in'), $s->customer?->phone ?? $s->customer_phone]);
+        return $this->age($sales, $asOf, fn (Sale $s) => [$s->customer_id ?? 'walk-in', $s->customer?->name ?? $s->customer_name ?? __('Customer'), $s->customer?->phone ?? $s->customer_phone]);
     }
 
     public function agedPayables(string $asOf, ?int $branchId = null): array

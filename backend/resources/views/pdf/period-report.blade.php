@@ -52,7 +52,7 @@
             <tr>
                 <td>{{ $s->sold_at->format('d/m/Y H:i') }}</td>
                 <td>{{ $s->number }}</td>
-                <td>{{ $s->customer_name }}</td>
+                <td>{{ $s->customer?->name ?? $s->customer_name ?? __('Customer') }}</td>
                 <td>{{ $s->cashier?->name }}</td>
                 <td>{{ $s->payment_status }}</td>
                 <td class="num">{{ number_format((float) $s->total, 2) }}</td>

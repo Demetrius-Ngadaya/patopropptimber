@@ -1540,5 +1540,19 @@
     "Selling price": "Bei ya kuuzia",
     "Money after selling": "Pesa baada ya kuuza",
     "Expected profit": "Faida tarajiwa",
-    "Cash / credit": "Taslimu / mkopo"
+    "Cash / credit": "Taslimu / mkopo",
+    "Period": "Kipindi",
+    "Printed": "Imechapishwa",
+    "Page": "Ukurasa",
+    "Completed": "Imekamilika",
+    "Pos": "Dukani (POS)",
+    "Online": "Mtandaoni",
+    "No records for the selected filters.": "Hakuna kumbukumbu kwa vichujio ulivyochagua.",
+    "Yes": "Ndiyo",
+    "No": "Hapana",
+    "Picture added.": "Picha imeongezwa.",
+    "Picture removed. You can restore it later.": "Picha imeondolewa. Unaweza kuirudisha baadaye.",
+    "Top of the shop: show my pictures (slides) instead of the heading text": "Juu ya duka: onyesha picha zangu (slaidi) badala ya maandishi ya kichwa",
+    "Top of the shop: heading (empty = \"Order from <business> ...\")": "Juu ya duka: kichwa cha habari (tupu = \"Agiza kutoka <biashara> ...\")",
+    "Top of the shop: line under the heading (empty = how to pay)": "Juu ya duka: mstari chini ya kichwa (tupu = jinsi ya kulipa)"
 }

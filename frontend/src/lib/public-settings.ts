@@ -45,6 +45,8 @@ export type PublicSettings = {
   shop_min_order_amount: number;
   shop_show_stock: boolean;
   shop_tagline: string;
+  shop_hero_subtitle?: string;
+  shop_hero_slides?: boolean;
   session_timeout_minutes: number;
   messaging_channels?: string[];
   barcode_enabled?: boolean;

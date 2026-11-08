@@ -136,7 +136,7 @@ export default function DashboardPage() {
                 columns={[
                   { key: "number", header: t("Receipt"), render: (r) => <Link href={`/admin/sales/${r.id}`} className="font-medium text-ink-900 hover:underline">{r.number}</Link> },
                   { key: "sold_at", header: t("Time"), render: (r) => dateTime(r.sold_at) },
-                  { key: "customer_name", header: t("Customer"), render: (r) => r.customer_name ?? "Walk-in" },
+                  { key: "customer_name", header: t("Customer"), render: (r) => r.customer_name ?? t("Customer") },
                   { key: "cashier.name", header: t("Cashier"), hideOnMobile: true },
                   { key: "total", header: t("Total"), align: "right", render: (r) => money(r.total) },
                   { key: "payment_status", header: t("Payment"), render: (r) => <StatusBadge status={r.status === "cancelled" ? "cancelled" : r.payment_status} /> },

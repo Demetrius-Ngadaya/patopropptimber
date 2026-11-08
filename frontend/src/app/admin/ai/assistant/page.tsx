@@ -109,7 +109,7 @@ export default function AssistantPage() {
                   <div className={cn("max-w-[85%] rounded-2xl px-4 py-2.5", m.role === "user" ? "bg-brand-600 text-white keep-light" : "bg-ink-50 text-ink-900")}>
                     {m.role === "user" ? <p className="whitespace-pre-wrap text-sm">{m.content}</p> : <Markdown text={m.content} />}
                     {"tool_calls" in m && m.tool_calls?.length ? (
-                      <p className="mt-2 flex flex-wrap items-center gap-1 text-[11px] text-ink-400"><Wrench className="size-3" />{t("Looked up")}: {Array.from(new Set(m.tool_calls.map((c) => c.name.replace(/_/g, " ")))).join(", ")}</p>
+                      <p className="mt-2 flex flex-wrap items-center gap-1 text-[11px] text-ink-400"><Wrench className="size-3" />{t("Looked up")}: {Array.from(new Set(m.tool_calls.map((c) => String(c.tool ?? c.name ?? "").replace(/_/g, " ")).filter(Boolean))).join(", ")}</p>
                     ) : null}
                   </div>
                 </div>

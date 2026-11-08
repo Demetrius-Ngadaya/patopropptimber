@@ -161,7 +161,7 @@ export default function Checkout() {
           <ListRow
             icon={cart.customer ? 'person' : 'person-add-outline'}
             iconTone={cart.customer ? 'primary' : 'neutral'}
-            title={cart.customer?.name ?? t('Walk-in customer')}
+            title={cart.customer?.name ?? t('Customer')}
             subtitle={cart.customer ? [cart.customer.phone, cart.customer.balance > 0 ? t('Owes {amount}', { amount: money(cart.customer.balance) }) : null].filter(Boolean).join(' · ') : t('Tap to choose a customer (needed for credit)')}
             onPress={() => setPickCustomer(true)}
             right={cart.customer ? <IconButton icon="close-circle" label={t('Remove customer')} onPress={() => useCart.getState().setCustomer(null)} /> : undefined}

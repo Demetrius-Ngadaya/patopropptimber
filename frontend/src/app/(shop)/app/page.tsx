@@ -59,7 +59,7 @@ export default function AppDownloadPage() {
             {isLoading ? (
               <div className="space-y-3"><Skeleton className="h-12 w-full" /><Skeleton className="h-4 w-1/2" /></div>
             ) : !release ? (
-              <EmptyState icon={<Smartphone className="size-6" />} title={t("The app is not available for download yet")} message={t("Ask the administrator to upload the app. Meanwhile you can use the website on your phone.")} />
+              <EmptyState icon={<Smartphone className="size-6" />} title={t("The Android app file is not available yet")} message={t("Meanwhile, install PatoPro from this website: it works like an app (see the steps for your phone).")} />
             ) : (
               <>
                 <a
@@ -96,7 +96,34 @@ export default function AppDownloadPage() {
         </section>
 
         <aside className="space-y-6">
-          <div className="rounded-2xl bg-surface p-5 ring-1 ring-ink-200/70">
+          {/* iPhones cannot install app files from websites (Apple allows only the App Store),
+              so iPhone users get the web app, which opens full-screen from the home screen. */}
+          {(device === "ios" || !release) && (
+            <div className="rounded-2xl bg-surface p-5 ring-1 ring-ink-200/70">
+              <h2 className="font-semibold text-ink-900">{device === "ios" ? t("Install on iPhone / iPad") : t("Install from this website (any phone)")}</h2>
+              <ol className="mt-3 space-y-3 text-sm text-ink-700">
+                {(device === "ios"
+                  ? [
+                      t("Open pptimber.co.tz in Safari (not Chrome)."),
+                      t("Tap the Share button (the square with an arrow) at the bottom."),
+                      t("Choose “Add to Home Screen”, then “Add”."),
+                      t("Open PatoPro from the new icon and sign in. It opens full-screen like an app."),
+                    ]
+                  : [
+                      t("Open this website in Chrome."),
+                      t("Tap the ⋮ menu, then “Install app” or “Add to Home screen”."),
+                      t("Open PatoPro from the new icon and sign in."),
+                    ]
+                ).map((step, i) => (
+                  <li key={i} className="flex gap-3">
+                    <span className="grid size-6 shrink-0 place-items-center rounded-full bg-brand-100 text-xs font-bold text-brand-800">{i + 1}</span>
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+          {device !== "ios" && <div className="rounded-2xl bg-surface p-5 ring-1 ring-ink-200/70">
             <h2 className="font-semibold text-ink-900">{t("How to install")}</h2>
             <ol className="mt-3 space-y-3">
               {steps.map((s, i) => (
@@ -110,7 +137,7 @@ export default function AppDownloadPage() {
               <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
               {t("When a new version is released the app tells you, and you install it the same way. Your data stays on the phone and on the server.")}
             </p>
-          </div>
+          </div>}
 
           {device !== "android" && pageUrl && release && (
             <div className="flex items-center gap-4 rounded-2xl bg-surface p-5 ring-1 ring-ink-200/70">

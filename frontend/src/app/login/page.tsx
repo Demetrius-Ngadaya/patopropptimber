@@ -113,7 +113,6 @@ function LoginForm() {
             {!challenge ? (
               <form onSubmit={submit} noValidate>
                 <h1 className="text-center text-xl font-semibold tracking-tight text-ink-950">{t("Welcome back! Sign in to continue.")}</h1>
-                <p className="mt-1 text-center text-sm text-ink-500">{t("Staff and customers use the same login.")}</p>
 
                 {params.get("next") && !error && <p className="mt-5 rounded-md bg-saffron-50 px-3 py-2 text-sm text-saffron-700">{t("Please log in to continue.")}</p>}
                 {error && <p role="alert" className="mt-5 rounded-md bg-ember-50 px-3 py-2 text-sm text-ember-700">{error}</p>}

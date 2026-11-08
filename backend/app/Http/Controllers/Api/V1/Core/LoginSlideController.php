@@ -4,12 +4,13 @@ namespace App\Http\Controllers\Api\V1\Core;
 
 use App\Http\Controllers\Controller;
 use App\Models\Core\LoginSlide;
+use App\Services\Site\SlideImages;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
-/** Pictures that slide beside the login form. */
+/** Pictures that slide beside the login form and / or at the top of the online shop. */
 class LoginSlideController extends Controller
 {
     public function index(Request $request): JsonResponse
@@ -22,22 +23,26 @@ class LoginSlideController extends Controller
         return $this->ok($slides);
     }
 
-    /** Public list for the login page (only active pictures, no internal fields). */
-    public function public(): JsonResponse
+    /** Public list for the login page, or for the shop with ?place=shop (active pictures only). */
+    public function public(Request $request): JsonResponse
     {
-        return $this->ok(LoginSlide::query()->visible()->get(['id', 'title', 'caption', 'image_path'])
-            ->map(fn (LoginSlide $s) => $s->only(['id', 'title', 'caption', 'image_url'])));
+        $place = $request->query('place') === 'shop' ? 'shop' : 'login';
+
+        return $this->ok(LoginSlide::query()->visible($place)->get(['id', 'title', 'caption', 'image_path', 'image_small_path'])
+            ->map(fn (LoginSlide $s) => $s->only(['id', 'title', 'caption', 'image_url', 'image_small_url'])))
+            // Browsers and the CDN may keep the list for a minute: the login page opens faster.
+            ->header('Cache-Control', 'public, max-age=60');
     }
 
     public function store(Request $request): JsonResponse
     {
         $data = $this->validated($request, true);
-        $data['image_path'] = $request->file('image')->store('login-slides', 'public');
+        $data += app(SlideImages::class)->store($request->file('image'));
         $data['sort_order'] ??= (int) LoginSlide::query()->max('sort_order') + 1;
 
         $slide = LoginSlide::create($data);
 
-        return $this->created($slide, __('Picture added to the login page.'));
+        return $this->created($slide, __('Picture added.'));
     }
 
     public function update(Request $request, int $id): JsonResponse
@@ -46,7 +51,7 @@ class LoginSlideController extends Controller
         $data = $this->validated($request, false);
         if ($request->hasFile('image')) {
             // The old file is kept: the change can still be traced in the audit log.
-            $data['image_path'] = $request->file('image')->store('login-slides', 'public');
+            $data = app(SlideImages::class)->store($request->file('image')) + $data;
         }
         $slide->fill($data)->save();
 
@@ -57,7 +62,7 @@ class LoginSlideController extends Controller
     {
         LoginSlide::query()->findOrFail($id)->delete();
 
-        return $this->ok(null, __('Picture removed from the login page. You can restore it later.'));
+        return $this->ok(null, __('Picture removed. You can restore it later.'));
     }
 
     public function restore(int $id): JsonResponse
@@ -86,7 +91,7 @@ class LoginSlideController extends Controller
 
     private function validated(Request $request, bool $creating): array
     {
-        foreach (['is_active'] as $flag) {
+        foreach (['is_active', 'show_on_login', 'show_on_shop'] as $flag) {
             if ($request->has($flag)) {
                 $request->merge([$flag => filter_var($request->input($flag), FILTER_VALIDATE_BOOLEAN)]);
             }
@@ -98,6 +103,8 @@ class LoginSlideController extends Controller
             'caption' => ['nullable', 'string', 'max:300'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:10000'],
             'is_active' => ['boolean'],
+            'show_on_login' => ['boolean'],
+            'show_on_shop' => ['boolean'],
         ], [
             'image.dimensions' => __('Use a picture at least 600 × 400 pixels (landscape works best).'),
         ]))->except('image')->all();

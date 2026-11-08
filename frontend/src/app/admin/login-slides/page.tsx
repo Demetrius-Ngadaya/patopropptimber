@@ -10,13 +10,15 @@ import { useT } from "@/lib/i18n";
 import { Guard } from "@/components/layout/Guard";
 import { Badge, Button, Checkbox, ConfirmDialog, EmptyState, Field, Input, Modal, PageHeader, Panel, Spinner, Textarea } from "@/components/ui";
 
-type Slide = { id: number; title: string | null; caption: string | null; image_url: string; sort_order: number; is_active: boolean; deleted_at: string | null };
+type Slide = { id: number; title: string | null; caption: string | null; image_url: string; image_small_url?: string | null; sort_order: number; is_active: boolean; show_on_login: boolean; show_on_shop: boolean; deleted_at: string | null };
 
 function SlideForm({ slide, open, onClose }: { slide: Slide | null; open: boolean; onClose: () => void }) {
   const t = useT();
   const [title, setTitle] = useState("");
   const [caption, setCaption] = useState("");
   const [active, setActive] = useState(true);
+  const [onLogin, setOnLogin] = useState(true);
+  const [onShop, setOnShop] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
@@ -25,6 +27,8 @@ function SlideForm({ slide, open, onClose }: { slide: Slide | null; open: boolea
     setTitle(slide?.title ?? "");
     setCaption(slide?.caption ?? "");
     setActive(slide?.is_active ?? true);
+    setOnLogin(slide?.show_on_login ?? true);
+    setOnShop(slide?.show_on_shop ?? false);
     setFile(null);
     setPreview(slide?.image_url ?? null);
   }, [open, slide]);
@@ -43,6 +47,8 @@ function SlideForm({ slide, open, onClose }: { slide: Slide | null; open: boolea
       form.append("title", title);
       form.append("caption", caption);
       form.append("is_active", active ? "1" : "0");
+      form.append("show_on_login", onLogin ? "1" : "0");
+      form.append("show_on_shop", onShop ? "1" : "0");
       return slide ? api.putForm(`admin/login-slides/${slide.id}`, form) : api.post("admin/login-slides", form);
     },
     { invalidate: [["admin/login-slides"], ["public/login-slides"]], onSuccess: onClose },
@@ -53,8 +59,8 @@ function SlideForm({ slide, open, onClose }: { slide: Slide | null; open: boolea
     <Modal
       open={open}
       onClose={onClose}
-      title={slide ? t("Edit picture") : t("Add a login picture")}
-      description={t("Landscape photos of at least 1600 × 1000 pixels look best. JPG, PNG or WebP, up to 5 MB.")}
+      title={slide ? t("Edit picture") : t("Add a picture")}
+      description={t("Best: a landscape photo about 1920 × 1080 pixels (16:9). JPG, PNG or WebP up to 5 MB. It is made smaller automatically, so it loads fast.")}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>{t("Cancel")}</Button>
@@ -80,7 +86,13 @@ function SlideForm({ slide, open, onClose }: { slide: Slide | null; open: boolea
         <Field label={t("Caption (optional)")} error={errors.caption}>
           {(p) => <Textarea {...p} rows={2} value={caption} onChange={(e) => setCaption(e.target.value)} maxLength={300} />}
         </Field>
-        <Checkbox label={t("Show on the login page")} checked={active} onChange={(e) => setActive(e.target.checked)} />
+        <div className="space-y-2 rounded-lg bg-ink-50 p-3">
+          <p className="text-sm font-medium text-ink-800">{t("Where to show this picture")}</p>
+          <Checkbox label={t("Beside the login form")} checked={onLogin} onChange={(e) => setOnLogin(e.target.checked)} />
+          <Checkbox label={t("At the top of the online shop")} checked={onShop} onChange={(e) => setOnShop(e.target.checked)} />
+          <p className="text-xs text-ink-500">{t("Tick both to use the same picture in both places. The shop shows pictures only when “show my pictures” is on in Settings → Online shop.")}</p>
+        </div>
+        <Checkbox label={t("Picture is switched on")} checked={active} onChange={(e) => setActive(e.target.checked)} />
       </div>
     </Modal>
   );
@@ -112,8 +124,8 @@ export default function LoginSlidesPage() {
   return (
     <Guard perm="login_slides.view">
       <PageHeader
-        title={t("Login pictures")}
-        description={t("Pictures that slide slowly on the left of the login page. Add, change, reorder or remove them at any time.")}
+        title={t("Pictures: login & shop")}
+        description={t("Pictures that slide beside the login form and at the top of the online shop. Choose for each picture where it shows.")}
         actions={can("login_slides.create") && !trashed && <Button icon={<ImagePlus className="size-4" />} onClick={() => { setEditing(null); setFormOpen(true); }}>{t("Add picture")}</Button>}
       />
       <div className="mb-4 flex items-center gap-4">
@@ -122,7 +134,7 @@ export default function LoginSlidesPage() {
 
       {q.isLoading ? <Spinner /> : !slides.length ? (
         <Panel>
-          <EmptyState icon={<ImagePlus className="size-9" />} title={trashed ? t("No deleted pictures") : t("No login pictures yet")} message={trashed ? undefined : t("Without pictures, the login page shows a calm coloured background.")} />
+          <EmptyState icon={<ImagePlus className="size-9" />} title={trashed ? t("No deleted pictures") : t("No pictures yet")} message={trashed ? undefined : t("Without pictures, the login page shows a calm coloured background and the shop shows its heading text.")} />
         </Panel>
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -130,8 +142,16 @@ export default function LoginSlidesPage() {
             <li key={s.id} className="overflow-hidden rounded-[var(--radius-panel)] bg-surface ring-1 ring-ink-200/70">
               <div className="relative aspect-[16/10] bg-ink-100">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={s.image_url} alt={s.title ?? ""} className={cn("size-full object-cover", (!s.is_active || trashed) && "opacity-50 grayscale")} />
-                <span className="absolute left-2 top-2"><Badge tone={s.is_active ? "green" : "neutral"}>{s.is_active ? t("Showing") : t("Hidden")}</Badge></span>
+                <img src={s.image_small_url ?? s.image_url} alt={s.title ?? ""} loading="lazy" decoding="async" className={cn("size-full object-cover", (!s.is_active || trashed) && "opacity-50 grayscale")} />
+                <span className="absolute left-2 top-2 flex gap-1">
+                  {!s.is_active ? <Badge tone="neutral">{t("Hidden")}</Badge> : (
+                    <>
+                      {s.show_on_login && <Badge tone="green">{t("Login")}</Badge>}
+                      {s.show_on_shop && <Badge tone="blue">{t("Shop")}</Badge>}
+                      {!s.show_on_login && !s.show_on_shop && <Badge tone="neutral">{t("Not placed")}</Badge>}
+                    </>
+                  )}
+                </span>
                 <span className="num absolute right-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-xs text-white">#{i + 1}</span>
               </div>
               <div className="flex items-start justify-between gap-2 p-3">
@@ -167,7 +187,7 @@ export default function LoginSlidesPage() {
         onClose={() => setDeleting(null)}
         onConfirm={() => deleting && remove.mutate(deleting.id)}
         title={t("Remove this picture?")}
-        message={t("It will no longer show on the login page. You can restore it from the deleted list.")}
+        message={t("It will no longer show on the login page or in the shop. You can restore it from the deleted list.")}
         confirmLabel={t("Remove picture")}
         loading={remove.isPending}
       />
