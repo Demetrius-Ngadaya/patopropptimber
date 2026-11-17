@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { FileSpreadsheet, FileText } from "lucide-react";
 import { download, type Paginated } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -31,12 +32,12 @@ export default function AuditPage() {
     ["activity", "User activity", "audit.activity"],
     ["logins", "Logins", "audit.logins"],
   ] as const).filter(([, , p]) => can(p));
-  const [tab, setTab] = useState<TabKey>(available[0]?.[0] ?? "changes");
-  const [search, setSearch] = useState("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [filter, setFilter] = useState("");
-  const [page, setPage] = useState(1);
+  const [tab, setTab] = useListState<TabKey>("tab", available[0]?.[0] ?? "changes");
+  const [search, setSearch] = useListState("search", "");
+  const [from, setFrom] = useListState("from", "");
+  const [to, setTo] = useListState("to", "");
+  const [filter, setFilter] = useListState("filter", "");
+  const [page, setPage] = useListState("page", 1);
   const [detail, setDetail] = useState<Change | Activity | null>(null);
   const q = useDebounced(search);
 

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { Plus } from "lucide-react";
 import type { Paginated } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -19,8 +20,8 @@ export default function PurchasesPage() {
   const router = useRouter();
   const { can } = useAuth();
   const { suppliers = [] } = useLookups(["suppliers"]);
-  const [f, setF] = useState({ search: "", supplier_id: "", payment_status: "", due: "", date_from: "", date_to: "" });
-  const [page, setPage] = useState(1);
+  const [f, setF] = useListState("f", { search: "", supplier_id: "", payment_status: "", due: "", date_from: "", date_to: "" });
+  const [page, setPage] = useListState("page", 1);
   const search = useDebounced(f.search);
   const list = useApi<Paginated<Row>>("admin/purchases", { ...f, search, page });
 

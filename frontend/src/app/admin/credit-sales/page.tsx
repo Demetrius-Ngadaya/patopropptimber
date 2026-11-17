@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import type { Paginated } from "@/lib/api";
 import { date, money, toNumber } from "@/lib/format";
 import { useApi, useDebounced, useUrlParam } from "@/lib/hooks";
@@ -16,9 +17,9 @@ type Summary = { count: number; original_owed: number; paid: number; outstanding
 export default function CreditSalesPage() {
   const t = useT();
   const router = useRouter();
-  const [status, setStatus] = useState<Status>("outstanding");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [status, setStatus] = useListState<Status>("status", "outstanding");
+  const [search, setSearch] = useListState("search", "");
+  const [page, setPage] = useListState("page", 1);
   useUrlParam("status", (v) => setStatus(v as Status));
   const q = useDebounced(search);
   const list = useApi<Paginated<CreditSaleRow> & { summary: Summary }>("admin/credit-sales", { status, search: q, page });

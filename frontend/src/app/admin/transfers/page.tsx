@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { Plus } from "lucide-react";
 import type { Paginated } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -18,9 +19,9 @@ export default function TransfersPage() {
   const t = useT();
   const router = useRouter();
   const { can } = useAuth();
-  const [direction, setDirection] = useState("all");
-  const [status, setStatus] = useState("");
-  const [page, setPage] = useState(1);
+  const [direction, setDirection] = useListState("direction", "all");
+  const [status, setStatus] = useListState("status", "");
+  const [page, setPage] = useListState("page", 1);
   useUrlParam("direction", setDirection);
   useUrlParam("status", setStatus);
   const list = useApi<Paginated<Row>>("admin/transfers", { direction, status, page });

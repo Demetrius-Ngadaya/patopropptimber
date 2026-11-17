@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { PiggyBank, Plus } from "lucide-react";
 import { api, type ApiResponse, type Paginated } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -71,9 +72,9 @@ export default function SavingsPage() {
   const t = useT();
   const router = useRouter();
   const { can } = useAuth();
-  const [status, setStatus] = useState<"" | "active" | "frozen" | "closed">("active");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [status, setStatus] = useListState<"" | "active" | "frozen" | "closed">("status", "active");
+  const [search, setSearch] = useListState("search", "");
+  const [page, setPage] = useListState("page", 1);
   const [opening, setOpening] = useState(false);
   const q = useDebounced(search);
   const list = useApi<Paginated<SavingsAccount> & { summary: Summary }>("admin/savings", { status, search: q, page });

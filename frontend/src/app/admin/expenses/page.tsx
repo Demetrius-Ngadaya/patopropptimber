@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { api, type ApiResponse, type Paginated } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -19,9 +20,9 @@ export default function ExpensesPage() {
   const { can } = useAuth();
   const { expense_categories = [] } = useLookups(["expense_categories"]);
   // All dates by default, so older expenses (e.g. brought over from MauzoApp) are visible; narrow with From / To.
-  const [f, setF] = useState({ search: "", expense_category_id: "", date_from: "", date_to: "" });
+  const [f, setF] = useListState("f", { search: "", expense_category_id: "", date_from: "", date_to: "" });
   const [trashed, setTrashed] = useState(false);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useListState("page", 1);
   const [editing, setEditing] = useState<Expense | null>(null);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(blank);

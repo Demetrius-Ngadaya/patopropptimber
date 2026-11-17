@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { Plus } from "lucide-react";
 import { api, type ApiResponse, type Paginated } from "@/lib/api";
 import { date, money, today } from "@/lib/format";
@@ -16,7 +17,7 @@ import type { Reconciliation } from "@/features/accounting/types";
 export default function ReconciliationsPage() {
   const t = useT();
   const router = useRouter();
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useListState("page", 1);
   const [open, setOpen] = useState(false);
   const [f, setF] = useState({ account_id: "" as number | "", statement_date: today(), statement_balance: "", notes: "" });
   const list = useApi<Paginated<Reconciliation>>("admin/accounting/reconciliations", { page });

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { Plus, RotateCcw } from "lucide-react";
 import { api, type Paginated } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -16,10 +17,10 @@ export default function SuppliersPage() {
   const t = useT();
   const router = useRouter();
   const { can } = useAuth();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useListState("search", "");
   const [owed, setOwed] = useState(false);
   const [trashed, setTrashed] = useState(false);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useListState("page", 1);
   const [creating, setCreating] = useState(false);
   const q = useDebounced(search);
   const list = useApi<Paginated<Supplier> & { summary: { total_owed: number } }>("admin/suppliers", { search: q, page, filter: owed ? "owed" : undefined, trashed: trashed ? "only" : undefined });

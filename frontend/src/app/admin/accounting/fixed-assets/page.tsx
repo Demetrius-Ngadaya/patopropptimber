@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { CalendarClock, Plus } from "lucide-react";
 import { api, type ApiResponse, type Paginated } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -67,9 +68,9 @@ function DisposeDialog({ asset, onClose }: { asset: Asset; onClose: () => void }
 export default function FixedAssetsPage() {
   const t = useT();
   const { can } = useAuth();
-  const [status, setStatus] = useState("");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [status, setStatus] = useListState("status", "");
+  const [search, setSearch] = useListState("search", "");
+  const [page, setPage] = useListState("page", 1);
   const [registering, setRegistering] = useState(false);
   const [disposing, setDisposing] = useState<Asset | null>(null);
   const [period, setPeriod] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 7); });

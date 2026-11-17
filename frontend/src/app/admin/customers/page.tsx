@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { Plus, RotateCcw } from "lucide-react";
 import { api, type Paginated } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -19,9 +20,9 @@ export default function CustomersPage() {
   const t = useT();
   const router = useRouter();
   const { can } = useAuth();
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<Filter>("");
-  const [page, setPage] = useState(1);
+  const [search, setSearch] = useListState("search", "");
+  const [filter, setFilter] = useListState<Filter>("filter", "");
+  const [page, setPage] = useListState("page", 1);
   const [trashed, setTrashed] = useState(false);
   const [creating, setCreating] = useState(false);
   useUrlParam("filter", (v) => setFilter(v as Filter));

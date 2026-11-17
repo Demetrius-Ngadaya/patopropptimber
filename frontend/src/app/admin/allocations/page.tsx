@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { Plus } from "lucide-react";
 import type { Paginated } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -17,8 +18,8 @@ export default function AllocationsPage() {
   const t = useT();
   const router = useRouter();
   const { can } = useAuth();
-  const [status, setStatus] = useState("open");
-  const [page, setPage] = useState(1);
+  const [status, setStatus] = useListState("status", "open");
+  const [page, setPage] = useListState("page", 1);
   const list = useApi<Paginated<Row>>("admin/allocations", { status, page });
 
   return (

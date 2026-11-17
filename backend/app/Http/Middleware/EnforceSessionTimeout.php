@@ -43,14 +43,41 @@ class EnforceSessionTimeout
         }
 
         // Write at most once every 30 seconds to keep this cheap.
+        $changes = [];
         if (! $token->last_activity_at || $token->last_activity_at->diffInSeconds(now(), true) >= 30) {
-            $token->forceFill(['last_activity_at' => now()])->saveQuietly();
+            $changes['last_activity_at'] = now();
+        }
+
+        // Someone who keeps working is never thrown out: the login is pushed forward
+        // (a full period again) once less than half of it is left. Only inactivity ends it.
+        $renewed = false;
+        $window = $this->lifetimeHours($user, $token);
+        if ($token->expires_at && $token->expires_at->lt(now()->addMinutes($window * 30))) {
+            $changes['expires_at'] = now()->addHours($window);
+            $renewed = true;
+        }
+        if ($changes) {
+            $token->forceFill($changes)->saveQuietly();
         }
 
         $response = $next($request);
         $response->headers->set('X-Session-Timeout', (string) $minutes);
+        if ($renewed) {
+            // The website gateway moves its login cookie to the new time.
+            $response->headers->set('X-Session-Expires', $token->expires_at->toIso8601String());
+        }
 
         return $response;
+    }
+
+    /** How long a login lasts from its last use (same periods as at login). */
+    private function lifetimeHours($user, PersonalAccessToken $token): int
+    {
+        return match (true) {
+            $user->isCustomer() => 24 * 30,
+            $token->isMobile() => 24 * max(1, $this->settings->int('mobile_session_days')),
+            default => 24,
+        };
     }
 
     private function end(PersonalAccessToken $token, string $reason, string $message, string $code): Response

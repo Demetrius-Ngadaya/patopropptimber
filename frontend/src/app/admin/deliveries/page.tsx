@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { MessageCircle } from "lucide-react";
 import type { Paginated } from "@/lib/api";
 import { dateTime, money } from "@/lib/format";
@@ -19,10 +20,10 @@ export default function DeliveriesPage() {
   const router = useRouter();
   const { can } = useAuth();
   const staff = can(["deliveries.view", "deliveries.assign"]);
-  const [status, setStatus] = useState<Filter>("open");
+  const [status, setStatus] = useListState<Filter>("status", "open");
   const [mine, setMine] = useState(false);
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [search, setSearch] = useListState("search", "");
+  const [page, setPage] = useListState("page", 1);
   // Refreshes by itself so new jobs and replies show up.
   const list = useApi<Paginated<Delivery>>("admin/deliveries", { status, mine: mine || undefined, search: useDebounced(search), page });
 

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { ChevronRight } from "lucide-react";
 import type { Paginated } from "@/lib/api";
 import { date, money } from "@/lib/format";
@@ -15,7 +16,7 @@ type Order = { id: number; number: string; status: string; delivery_method: stri
 
 export default function MyOrdersPage() {
   const t = useT();
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useListState("page", 1);
   const { settings } = usePublicSettings();
   const q = useApi<Paginated<Order>>("shop/account/orders", { page });
 

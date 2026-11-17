@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { Plus, RotateCcw, UserRound } from "lucide-react";
 import { api, type Paginated } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -17,9 +18,9 @@ export default function EmployeesPage() {
   const t = useT();
   const router = useRouter();
   const { can } = useAuth();
-  const [status, setStatus] = useState("employed");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [status, setStatus] = useListState("status", "employed");
+  const [search, setSearch] = useListState("search", "");
+  const [page, setPage] = useListState("page", 1);
   const [trashed, setTrashed] = useState(false);
   const [creating, setCreating] = useState(false);
   const q = useDebounced(search);

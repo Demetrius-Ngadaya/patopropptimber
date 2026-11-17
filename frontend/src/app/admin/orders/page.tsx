@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { api, type ApiResponse, type Paginated } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -85,9 +86,9 @@ export default function OrdersPage() {
   const tr = useT();
   const router = useRouter();
   const { can } = useAuth();
-  const [status, setStatus] = useState("open");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [status, setStatus] = useListState("status", "open");
+  const [search, setSearch] = useListState("search", "");
+  const [page, setPage] = useListState("page", 1);
   const [creating, setCreating] = useState(false);
   useUrlParam("status", setStatus);
   const q = useDebounced(search);

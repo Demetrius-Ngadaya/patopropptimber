@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Toaster } from "sonner";
 import { ApiError } from "@/lib/api";
 import { AuthProvider } from "@/lib/auth";
+import { ScrollMemory } from "@/lib/list-state";
 import { NetworkStatus } from "./NetworkStatus";
 import { BrandColorSync } from "./BrandColorSync";
 import { VisitTracker } from "./VisitTracker";
@@ -33,6 +34,7 @@ export function Providers({ children, locale, theme }: { children: React.ReactNo
             <NetworkStatus />
             <BrandColorSync />
             <VisitTracker />
+            <ScrollMemory />
             {children}
             <ThemedToaster />
           </AuthProvider>

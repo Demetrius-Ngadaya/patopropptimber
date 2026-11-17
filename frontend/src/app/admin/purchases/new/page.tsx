@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, LayoutGrid, Trash2 } from "lucide-react";
 import { api, type ApiResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { money, today, toNumber } from "@/lib/format";
@@ -12,6 +12,7 @@ import { useLookups } from "@/lib/lookups";
 import type { Product } from "@/lib/types";
 import { Guard } from "@/components/layout/Guard";
 import { ProductPicker } from "@/features/catalog/components/ProductPicker";
+import { ProductCardsPicker } from "@/features/catalog/components/ProductCardsPicker";
 import { Button, Field, Input, PageHeader, Panel, Select, Textarea } from "@/components/ui";
 import { useT } from "@/lib/i18n";
 import { ChannelPicker } from "@/features/messaging/ChannelPicker";
@@ -28,6 +29,18 @@ export default function NewPurchasePage() {
   const [lines, setLines] = useState<Line[]>([]);
   const [h, setH] = useState({ supplier_id: "", supplier_invoice_no: "", purchase_date: today(), cost_allocation: "value", amount_paid: "", payment_method: "cash", payment_reference: "", due_date: "", remind_on: "", notes: "" });
   const [remindBy, setRemindBy] = useState<Channel[]>([]);
+  // Optional: pick products from cards (like the till). The choice is remembered on this computer.
+  const [cards, setCards] = useState(false);
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- the saved choice is only readable in the browser
+      if (localStorage.getItem("patopro.purchase-cards") === "1") setCards(true);
+    } catch { /* storage blocked: start with the search box only */ }
+  }, []);
+  const toggleCards = () => setCards((on) => {
+    try { localStorage.setItem("patopro.purchase-cards", on ? "0" : "1"); } catch { /* not saved */ }
+    return !on;
+  });
   const [costs, setCosts] = useState<Record<string, string>>({ transport_cost: "", loading_cost: "", unloading_cost: "", tax_cost: "", other_cost: "" });
 
   const add = (p: Product) => {
@@ -80,8 +93,20 @@ export default function NewPurchasePage() {
       <PageHeader back={<Link href="/admin/purchases" className="mb-2 inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-800"><ArrowLeft className="size-4" /> {t("Purchases")}</Link>} title={t("Receive goods")} description={t("Add what arrived. Transport and other costs are spread over the items to get the true (landed) cost used for profit.")} />
       <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
         <div className="space-y-5">
-          <Panel title={t("Items received")}>
+          <Panel
+            title={t("Items received")}
+            actions={
+              <Button size="sm" variant={cards ? "primary" : "secondary"} icon={<LayoutGrid className="size-4" />} onClick={toggleCards} aria-pressed={cards}>
+                {cards ? t("Hide product cards") : t("Show products as cards")}
+              </Button>
+            }
+          >
             <ProductPicker source="admin/products" onSelect={add} placeholder={t("Scan or search the product received")} showStock={false} />
+            {cards && (
+              <div className="mt-3">
+                <ProductCardsPicker onSelect={add} selectedIds={lines.map((l) => l.product.id)} priceLabel={can("products.view_cost") ? "cost" : "selling"} />
+              </div>
+            )}
             {errors.items && <p className="mt-2 text-sm text-ember-600">{errors.items}</p>}
             <div className="mt-4 space-y-3">
               {lines.map((l, i) => (

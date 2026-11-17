@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { Plus } from "lucide-react";
 import type { Paginated } from "@/lib/api";
 import { date, money } from "@/lib/format";
@@ -22,9 +23,9 @@ export default function PromotionsPage() {
   const router = useRouter();
   const { can } = useAuth();
   const { settings } = usePublicSettings();
-  const [state, setState] = useState<State>("running");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [state, setState] = useListState<State>("state", "running");
+  const [search, setSearch] = useListState("search", "");
+  const [page, setPage] = useListState("page", 1);
   const list = useApi<Paginated<Promotion>>("admin/promotions", { state, search: useDebounced(search), page });
 
   return (

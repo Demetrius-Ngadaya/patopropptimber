@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { Megaphone } from "lucide-react";
 import type { Paginated } from "@/lib/api";
 import { cn, date, money } from "@/lib/format";
@@ -39,10 +40,10 @@ export default function CustomerInsightsPage() {
   const t = useT();
   const router = useRouter();
   const { can } = useAuth();
-  const [segment, setSegment] = useState<Segment | "">("");
-  const [sort, setSort] = useState("spend");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [segment, setSegment] = useListState<Segment | "">("segment", "");
+  const [sort, setSort] = useListState("sort", "spend");
+  const [search, setSearch] = useListState("search", "");
+  const [page, setPage] = useListState("page", 1);
   useUrlParam("segment", (v) => setSegment(v as Segment));
   const q = useApi<Response>("admin/customer-insights", { segment, sort, search: useDebounced(search), page });
   const d = q.data;

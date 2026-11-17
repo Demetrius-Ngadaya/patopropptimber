@@ -103,7 +103,12 @@
     "extra": {
       "apiUrl": "https://api.pptimber.co.tz",
       "eas": {
-        "projectId": ""
+        "projectId": "1c7d6808-de87-42e9-9c4c-e508f4f70dcc"
+      },
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
       }
     }
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { KeyRound, ListChecks, LockOpen, LogOut, Pencil, Plus, RotateCcw, ShieldOff, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { api, type ApiResponse, type Paginated } from "@/lib/api";
@@ -21,10 +22,10 @@ export default function UsersPage() {
   const { can, user: me } = useAuth();
   const { branches = [] } = useLookups(["branches"]);
   const roles = useApi<ApiResponse<Role[]>>("admin/roles");
-  const [search, setSearch] = useState("");
-  const [roleId, setRoleId] = useState("");
+  const [search, setSearch] = useListState("search", "");
+  const [roleId, setRoleId] = useListState("roleId", "");
   const [trashed, setTrashed] = useState(false);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useListState("page", 1);
   const [editing, setEditing] = useState<Staff | null>(null);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(blank);

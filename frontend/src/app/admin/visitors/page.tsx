@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { Globe2, Laptop, MapPin, Monitor, Smartphone, Tablet } from "lucide-react";
 import type { ApiResponse } from "@/lib/api";
 import { useApi, usePaginated } from "@/lib/hooks";
@@ -30,8 +31,8 @@ export default function VisitorsPage() {
   const t = useT();
   const { locale } = useLocale();
   const [period, setPeriod] = useState<Period>("online");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [search, setSearch] = useListState("search", "");
+  const [page, setPage] = useListState("page", 1);
   const summary = useApi<ApiResponse<Summary>>("admin/visitors/summary");
   const list = usePaginated<Visitor>("admin/visitors", { period, search: search || undefined, page, per_page: 25 });
   const s = summary.data?.data;

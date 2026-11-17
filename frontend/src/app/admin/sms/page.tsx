@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { Paperclip, Send } from "lucide-react";
 import { api, type Paginated } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -30,11 +31,11 @@ export default function MessagesPage() {
   const [customers, setCustomers] = useState<Picked[]>([]);
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
-  const [purpose, setPurpose] = useState("");
-  const [channel, setChannel] = useState("");
-  const [page, setPage] = useState(1);
+  const [search, setSearch] = useListState("search", "");
+  const [status, setStatus] = useListState("status", "");
+  const [purpose, setPurpose] = useListState("purpose", "");
+  const [channel, setChannel] = useListState("channel", "");
+  const [page, setPage] = useListState("page", 1);
   const q = useDebounced(search);
   const logs = useApi<Paginated<Log>>(can("sms.logs") ? "admin/audit/sms" : null, { search: q, status, purpose, channel, page });
 

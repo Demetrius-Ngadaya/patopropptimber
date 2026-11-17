@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import type { Paginated } from "@/lib/api";
 import { dateTime, qty, humanize, toNumber } from "@/lib/format";
 import { useApi } from "@/lib/hooks";
@@ -18,8 +19,8 @@ const types = ["opening", "purchase", "sale", "sale_return", "sale_cancel", "pur
 export default function MovementsPage() {
   const tr = useT();
   const [product, setProduct] = useState<Product | null>(null);
-  const [f, setF] = useState({ type: "", date_from: "", date_to: "" });
-  const [page, setPage] = useState(1);
+  const [f, setF] = useListState("f", { type: "", date_from: "", date_to: "" });
+  const [page, setPage] = useListState("page", 1);
   const list = useApi<Paginated<Row>>("admin/stock/movements", { ...f, product_id: product?.id, page });
 
   return (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { Banknote, Check, Plus, X } from "lucide-react";
 import { api, type Paginated } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -15,8 +16,8 @@ import { employeeName, type SalaryAdvance } from "@/features/hr/types";
 export default function AdvancesPage() {
   const t = useT();
   const { can } = useAuth();
-  const [status, setStatus] = useState("pending");
-  const [page, setPage] = useState(1);
+  const [status, setStatus] = useListState("status", "pending");
+  const [page, setPage] = useListState("page", 1);
   const [creating, setCreating] = useState(false);
   const [paying, setPaying] = useState<SalaryAdvance | null>(null);
   const [form, setForm] = useState({ employee_id: "", amount: "", installments: "1", reason: "" });

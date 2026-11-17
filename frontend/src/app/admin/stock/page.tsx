@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import type { Paginated } from "@/lib/api";
 import { date, qty } from "@/lib/format";
 import { useApi, useUrlParam } from "@/lib/hooks";
@@ -15,8 +16,8 @@ type Kind = "low" | "out" | "expiring" | "expired";
 export default function StockAlertsPage() {
   const t = useT();
   const router = useRouter();
-  const [type, setType] = useState<Kind>("low");
-  const [page, setPage] = useState(1);
+  const [type, setType] = useListState<Kind>("type", "low");
+  const [page, setPage] = useListState("page", 1);
   useUrlParam("type", (v) => setType(v as Kind));
   const list = useApi<Paginated<Row> & { counts: Record<string, number> }>("admin/stock/alerts", { type, page });
   const c = list.data?.counts ?? {};

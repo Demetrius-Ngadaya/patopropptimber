@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { Barcode as BarcodeIcon, Download, FileSpreadsheet, Plus, Printer, QrCode, RotateCcw, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { api, download, ApiError, type ApiResponse, type Paginated } from "@/lib/api";
@@ -76,9 +77,9 @@ export default function ProductsPage() {
   const router = useRouter();
   const { can } = useAuth();
   const { categories = [] } = useLookups(["categories"]);
-  const [filters, setFilters] = useState({ search: "", category_id: "", stock: "", active: "" });
-  const [trashed, setTrashed] = useState(false);
-  const [page, setPage] = useState(1);
+  const [filters, setFilters] = useListState("filters", { search: "", category_id: "", stock: "", active: "" });
+  const [trashed, setTrashed] = useListState("trashed", false);
+  const [page, setPage] = useListState("page", 1);
   const [selected, setSelected] = useState<number[]>([]);
   const [allMatching, setAllMatching] = useState(false);
   const [generating, setGenerating] = useState(false);

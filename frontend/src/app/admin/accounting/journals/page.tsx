@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { Plus, Trash2, Undo2, Zap } from "lucide-react";
 import { api, type ApiResponse, type Paginated } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -154,10 +155,10 @@ function EntryDetail({ id, onClose }: { id: number; onClose: () => void }) {
 export default function JournalsPage() {
   const t = useT();
   const { can } = useAuth();
-  const [kind, setKind] = useState<"" | "1" | "0">("");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [range, setRange] = useState({ date_from: "", date_to: "" });
+  const [kind, setKind] = useListState<"" | "1" | "0">("kind", "");
+  const [search, setSearch] = useListState("search", "");
+  const [page, setPage] = useListState("page", 1);
+  const [range, setRange] = useListState("range", { date_from: "", date_to: "" });
   const [manual, setManual] = useState(false);
   const [quick, setQuick] = useState(false);
   const [openId, setOpenId] = useState<number | null>(null);

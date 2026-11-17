@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { CheckCircle2, Inbox } from "lucide-react";
 import { api, type Paginated } from "@/lib/api";
 import { cn, dateTime } from "@/lib/format";
@@ -13,8 +14,8 @@ import type { InboxRow } from "@/features/messages/types";
 /** Messages, reminders and announcements from management to me. */
 export default function InboxPage() {
   const t = useT();
-  const [filter, setFilter] = useState<"" | "unread">("");
-  const [page, setPage] = useState(1);
+  const [filter, setFilter] = useListState<"" | "unread">("filter", "");
+  const [page, setPage] = useListState("page", 1);
   const [open, setOpen] = useState<number | null>(null);
   const list = useApi<Paginated<InboxRow> & { unread: number }>("admin/staff-messages", { filter, page });
   const read = useAction((id: number) => api.post(`admin/staff-messages/${id}/read`), { invalidate: [["admin/staff-messages"], ["admin/staff-messages/pending"]], silent: true });

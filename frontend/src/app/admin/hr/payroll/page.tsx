@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { Calculator, Landmark, Plus } from "lucide-react";
 import { api, type ApiResponse, type Paginated } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -20,8 +21,8 @@ function Runs() {
   const t = useT();
   const router = useRouter();
   const { can } = useAuth();
-  const [page, setPage] = useState(1);
-  const [year, setYear] = useState(String(new Date().getFullYear()));
+  const [page, setPage] = useListState("page", 1);
+  const [year, setYear] = useListState("year", String(new Date().getFullYear()));
   const [preparing, setPreparing] = useState(false);
   const [form, setForm] = useState({ period: lastMonth(), notes: "" });
   const list = useApi<Paginated<PayrollRun>>("admin/hr/payroll", { year, page });

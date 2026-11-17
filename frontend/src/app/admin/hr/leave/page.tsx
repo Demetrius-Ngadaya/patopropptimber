@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { Check, Paperclip, Plus, SlidersHorizontal, X } from "lucide-react";
 import { api, download, type ApiResponse, type Paginated } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -48,9 +49,9 @@ function NewRequest({ open, onClose }: { open: boolean; onClose: () => void }) {
 function Requests() {
   const t = useT();
   const { can } = useAuth();
-  const [status, setStatus] = useState("pending");
-  const [employee, setEmployee] = useState("");
-  const [page, setPage] = useState(1);
+  const [status, setStatus] = useListState("status", "pending");
+  const [employee, setEmployee] = useListState("employee", "");
+  const [page, setPage] = useListState("page", 1);
   const [creating, setCreating] = useState(false);
   const [rejecting, setRejecting] = useState<LeaveRequest | null>(null);
   const [note, setNote] = useState("");

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import type { Paginated } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { dateTime, money } from "@/lib/format";
@@ -15,8 +16,8 @@ export default function SalesPage() {
   const t = useT();
   const router = useRouter();
   const { can } = useAuth();
-  const [filters, setFilters] = useState({ search: "", status: "", payment_status: "", channel: "", date_from: "", date_to: "" });
-  const [page, setPage] = useState(1);
+  const [filters, setFilters] = useListState("filters", { search: "", status: "", payment_status: "", channel: "", date_from: "", date_to: "" });
+  const [page, setPage] = useListState("page", 1);
   const search = useDebounced(filters.search);
   const list = useApi<Paginated<Sale>>("admin/sales", { ...filters, search, page });
   const set = (k: keyof typeof filters, v: string) => {

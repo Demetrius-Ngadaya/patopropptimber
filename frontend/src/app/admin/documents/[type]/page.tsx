@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { notFound, useRouter } from "next/navigation";
 import { use, useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { Plus } from "lucide-react";
 import type { Paginated } from "@/lib/api";
 import { date, money, toNumber, today } from "@/lib/format";
@@ -26,9 +27,9 @@ function DocumentList({ type }: { type: "quotation" | "proforma" | "invoice" }) 
   const router = useRouter();
   const { can } = useAuth();
   const meta = TYPE_META[type];
-  const [stage, setStage] = useState("");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [stage, setStage] = useListState("stage", "");
+  const [search, setSearch] = useListState("search", "");
+  const [page, setPage] = useListState("page", 1);
   useUrlParam("stage", setStage);
   const q = useDebounced(search);
   const list = useApi<ListResponse>("admin/documents", { type, stage, search: q, page });

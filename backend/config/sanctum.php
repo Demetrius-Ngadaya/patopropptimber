@@ -10,9 +10,10 @@ return [
 
     'guard' => [],
 
-    // Absolute token lifetime in minutes (safety net). Idle timeout is enforced
-    // separately by the EnforceSessionTimeout middleware using the admin setting.
-    'expiration' => 60 * 24 * 7,
+    // No fixed lifetime from login: each token has its own expiry, which
+    // EnforceSessionTimeout pushes forward while the person keeps working, and the
+    // admin's inactivity timeout ends sessions that are left alone.
+    'expiration' => env('SANCTUM_EXPIRATION') ? (int) env('SANCTUM_EXPIRATION') : null,
 
     'token_prefix' => env('SANCTUM_TOKEN_PREFIX', 'mzp_'),
 

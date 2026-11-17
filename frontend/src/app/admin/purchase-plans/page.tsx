@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { Plus } from "lucide-react";
 import type { Paginated } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -17,9 +18,9 @@ export default function PurchasePlansPage() {
   const t = useT();
   const router = useRouter();
   const { can } = useAuth();
-  const [status, setStatus] = useState<PlanStatus | "">("");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [status, setStatus] = useListState<PlanStatus | "">("status", "");
+  const [search, setSearch] = useListState("search", "");
+  const [page, setPage] = useListState("page", 1);
   const list = useApi<Paginated<PurchasePlan> & { counts: Record<PlanStatus, number> }>("admin/purchase-plans", { status, search: useDebounced(search), page });
   const counts = list.data?.counts;
 

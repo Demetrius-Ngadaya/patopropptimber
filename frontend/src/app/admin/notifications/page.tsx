@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { CheckCheck } from "lucide-react";
 import type { Paginated } from "@/lib/api";
 import { cn, dateTime } from "@/lib/format";
@@ -20,9 +21,9 @@ const TYPE_LABELS: Record<string, string> = {
 /** Every notification the user may see (their role and branch decide which). */
 export default function NotificationsPage() {
   const t = useT();
-  const [tab, setTab] = useState<"all" | "unread">("all");
-  const [type, setType] = useState("");
-  const [page, setPage] = useState(1);
+  const [tab, setTab] = useListState<"all" | "unread">("tab", "all");
+  const [type, setType] = useListState("type", "");
+  const [page, setPage] = useListState("page", 1);
   const list = useApi<Paginated<AppNotification>>("admin/notifications", { unread: tab === "unread" ? 1 : undefined, type: type || undefined, page });
   const { read, readAll } = useNotificationActions();
   const rows = list.data?.data ?? [];

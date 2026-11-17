@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { Plus, Trash2 } from "lucide-react";
 import { api, type ApiResponse, type Paginated } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -24,8 +25,8 @@ export default function CommissionsPage() {
   const t = useT();
   const { can } = useAuth();
   const [period, setPeriod] = useState("");
-  const [accountId, setAccountId] = useState("");
-  const [page, setPage] = useState(1);
+  const [accountId, setAccountId] = useListState("accountId", "");
+  const [page, setPage] = useListState("page", 1);
   const [editing, setEditing] = useState<Commission | "new" | null>(null);
   const [deleting, setDeleting] = useState<Commission | null>(null);
   const list = useApi<Paginated<Commission> & { total: number }>("admin/agency/commissions", { period, agency_account_id: accountId, page });

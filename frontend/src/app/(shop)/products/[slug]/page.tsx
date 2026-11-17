@@ -9,7 +9,8 @@ import { useApi } from "@/lib/hooks";
 import { useCart, type ShopProduct } from "@/features/shop/cart";
 import { qty } from "@/lib/format";
 import { usePublicSettings } from "@/lib/public-settings";
-import { PriceTag, ProductCard, ProductImage, QuantityStepper } from "@/features/shop/components/ProductCard";
+import { PriceTag, ProductCard, QuantityStepper } from "@/features/shop/components/ProductCard";
+import { ProductImageViewer } from "@/features/shop/components/ProductImageViewer";
 import { Button, ErrorState, Spinner } from "@/components/ui";
 import { useT } from "@/lib/i18n";
 
@@ -30,7 +31,7 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
     <>
       <Link href="/" className="mb-4 inline-flex items-center gap-1 text-sm text-ink-500 hover:text-ink-800"><ArrowLeft className="size-4" /> {t("All products")}</Link>
       <div className="grid gap-8 md:grid-cols-2">
-        <div className="overflow-hidden rounded-xl ring-1 ring-ink-200/70"><ProductImage product={p} /></div>
+        <div className="self-start overflow-hidden rounded-xl ring-1 ring-ink-200/70"><ProductImageViewer key={p.id} product={p} /></div>
         <div>
           {p.category && <Link href={`/?category=${p.category.slug}`} className="text-sm font-medium text-brand-700 hover:underline">{p.category.name}</Link>}
           <h1 className="mt-1 text-3xl font-semibold tracking-tight text-ink-950">{p.name}</h1>

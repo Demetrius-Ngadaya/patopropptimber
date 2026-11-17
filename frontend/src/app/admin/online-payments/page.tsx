@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { RefreshCw } from "lucide-react";
 import { api, type Paginated } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -18,12 +19,12 @@ type Filter = "" | OnlinePaymentStatus | "unused";
 export default function OnlinePaymentsPage() {
   const t = useT();
   const { can } = useAuth();
-  const [status, setStatus] = useState<Filter>("");
-  const [purpose, setPurpose] = useState("");
-  const [from, setFrom] = useState(monthStart());
-  const [to, setTo] = useState(today());
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [status, setStatus] = useListState<Filter>("status", "");
+  const [purpose, setPurpose] = useListState("purpose", "");
+  const [from, setFrom] = useListState("from", monthStart());
+  const [to, setTo] = useListState("to", today());
+  const [search, setSearch] = useListState("search", "");
+  const [page, setPage] = useListState("page", 1);
   const [checking, setChecking] = useState<number | null>(null);
   const list = useApi<Paginated<OnlinePayment> & { summary: Summary }>("admin/online-payments", { status, purpose, from, to, search: useDebounced(search), page });
   const s = list.data?.summary;

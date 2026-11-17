@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { Eye, Megaphone, Plus, Trash2 } from "lucide-react";
 import { api, type ApiResponse, type Paginated } from "@/lib/api";
 import { cn, dateTime } from "@/lib/format";
@@ -21,7 +22,7 @@ type Detail = StaffMessage & { recipients: Array<{ id: number; read_at: string |
 /** Admin: write to staff and see who has read it. */
 export default function AnnouncementsPage() {
   const t = useT();
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useListState("page", 1);
   const [composing, setComposing] = useState(false);
   const [viewing, setViewing] = useState<number | null>(null);
   const [withdrawing, setWithdrawing] = useState<StaffMessage | null>(null);

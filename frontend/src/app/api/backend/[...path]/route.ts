@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { apiUrl, clearSession, forbiddenCsrf, forwardHeaders, isTrustedWrite, unreachable } from "@/lib/server/backend";
+import { apiUrl, clearSession, forbiddenCsrf, forwardHeaders, isTrustedWrite, setSession, TOKEN_COOKIE, TYPE_COOKIE, unreachable } from "@/lib/server/backend";
 
 /**
  * Same-origin gateway to the Laravel API: /api/backend/admin/products -> {API_URL}/admin/products
@@ -40,6 +40,10 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] 
 
   const res = new NextResponse(upstream.body, { status: upstream.status, headers });
   if (upstream.status === 401) clearSession(res);
+  // The API pushed the login forward because the person is still working: move the cookie too.
+  const renewed = upstream.headers.get("x-session-expires");
+  const token = req.cookies.get(TOKEN_COOKIE)?.value;
+  if (renewed && token && upstream.status !== 401) setSession(res, token, req.cookies.get(TYPE_COOKIE)?.value ?? "staff", renewed);
   return res;
 }
 

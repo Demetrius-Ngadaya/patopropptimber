@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import type { Paginated } from "@/lib/api";
 import { cn, date, money, monthStart, today } from "@/lib/format";
 import { useApi } from "@/lib/hooks";
@@ -14,9 +15,9 @@ import type { AgencyDay } from "@/features/agency/types";
 export default function AgencyDaysPage() {
   const t = useT();
   const router = useRouter();
-  const [from, setFrom] = useState(monthStart());
-  const [to, setTo] = useState(today());
-  const [page, setPage] = useState(1);
+  const [from, setFrom] = useListState("from", monthStart());
+  const [to, setTo] = useListState("to", today());
+  const [page, setPage] = useListState("page", 1);
   const list = useApi<Paginated<AgencyDay>>("admin/agency/days", { date_from: from, date_to: to, page });
 
   return (

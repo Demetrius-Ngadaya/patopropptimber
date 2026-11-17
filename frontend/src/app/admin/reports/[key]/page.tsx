@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { use, useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { ArrowLeft, FileDown, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { download, ApiError, type ApiResponse } from "@/lib/api";
@@ -75,11 +76,11 @@ export default function ReportViewer({ params }: { params: Promise<{ key: string
   const { can } = useAuth();
   const lookups = useLookups(["categories", "suppliers", "staff", "expense_categories"]);
   const agencyLines = useApi<ApiResponse<{ accounts: Array<{ id: number; name: string }> }>>(key.startsWith("agency") ? "admin/agency/accounts" : null, { all: 1 });
-  const [filters, setFilters] = useState<Record<string, string>>({ date_from: monthStart(), date_to: today() });
+  const [filters, setFilters] = useListState<Record<string, string>>("filters", { date_from: monthStart(), date_to: today() });
   const [customer, setCustomer] = useState<Customer | null>(null);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useListState("page", 1);
   const [exporting, setExporting] = useState<string | null>(null);
-  const [scope, setScope] = useState<"all" | "page">("all");
+  const [scope, setScope] = useListState<"all" | "page">("scope", "all");
   const debounced = useDebounced(filters, 350);
   const query = { ...debounced, customer_id: customer?.id, page };
   const q = useApi<ReportResponse>(`admin/reports/${key}`, query);

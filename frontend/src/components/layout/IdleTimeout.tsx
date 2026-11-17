@@ -6,9 +6,22 @@ import { Button, Modal } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 
+/** Shared by every open tab, so working in one tab keeps the others signed in too. */
+const ACTIVITY_KEY = "patopro.last-activity";
+
+function sharedActivity(): number {
+  try {
+    return Number(window.localStorage.getItem(ACTIVITY_KEY)) || 0;
+  } catch {
+    return 0;
+  }
+}
+
 /**
  * Mirrors the server-side inactivity timeout set by the admin: warns one minute
  * before the session ends and logs the user out when time is up.
+ * While the person is working (typing, clicking, scrolling) the server is told every
+ * few minutes, so a long form or a page read without saving never ends the session.
  */
 export function IdleTimeout() {
   const t = useT();
@@ -17,20 +30,43 @@ export function IdleTimeout() {
   const [warning, setWarning] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(60);
   const lastActivity = useRef(0);
+  const lastShared = useRef(0);
+  const lastPing = useRef(0);
 
   useEffect(() => {
     if (!user) return;
     lastActivity.current = Date.now();
+    lastPing.current = Date.now();
     const mark = () => {
-      lastActivity.current = Date.now();
+      const now = Date.now();
+      lastActivity.current = now;
+      if (now - lastShared.current > 5000) {
+        lastShared.current = now;
+        try {
+          window.localStorage.setItem(ACTIVITY_KEY, String(now));
+        } catch {
+          /* private mode: this tab only */
+        }
+      }
     };
-    const events = ["mousemove", "keydown", "pointerdown", "scroll", "touchstart"];
-    events.forEach((e) => window.addEventListener(e, mark, { passive: true }));
+    const events = ["mousemove", "keydown", "pointerdown", "scroll", "touchstart", "wheel", "input"];
+    events.forEach((e) => window.addEventListener(e, mark, { passive: true, capture: true }));
+
+    const limitMs = minutes * 60_000;
+    // Tell the server well before its clock runs out (at most every 5 minutes).
+    const pingEvery = Math.max(30_000, Math.min(5 * 60_000, limitMs / 3));
 
     const timer = setInterval(() => {
-      const idleMs = Date.now() - lastActivity.current;
-      const limitMs = minutes * 60_000;
+      const now = Date.now();
+      const latest = Math.max(lastActivity.current, sharedActivity());
+      const idleMs = now - latest;
       const left = Math.ceil((limitMs - idleMs) / 1000);
+
+      if (idleMs < 60_000 && now - lastPing.current >= pingEvery) {
+        lastPing.current = now;
+        api.get("auth/me").catch(() => undefined); // keeps the server-side activity clock fresh
+      }
+
       if (left <= 0) {
         clearInterval(timer);
         logout(t("You were logged out after {minutes} minutes of inactivity.", { minutes }));
@@ -43,13 +79,19 @@ export function IdleTimeout() {
     }, 1000);
 
     return () => {
-      events.forEach((e) => window.removeEventListener(e, mark));
+      events.forEach((e) => window.removeEventListener(e, mark, { capture: true }));
       clearInterval(timer);
     };
-  }, [user, minutes, logout]);
+  }, [user, minutes, logout, t]);
 
   const stay = async () => {
     lastActivity.current = Date.now();
+    lastPing.current = Date.now();
+    try {
+      window.localStorage.setItem(ACTIVITY_KEY, String(Date.now()));
+    } catch {
+      /* this tab only */
+    }
     setWarning(false);
     try {
       await api.get("auth/me"); // refreshes the server-side activity clock

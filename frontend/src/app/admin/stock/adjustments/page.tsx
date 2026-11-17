@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useListState } from "@/lib/list-state";
 import { Plus } from "lucide-react";
 import type { Paginated } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -16,8 +17,8 @@ type Row = { id: number; number: string; type: string; quantity: string; quantit
 export default function AdjustmentsPage() {
   const t = useT();
   const { can } = useAuth();
-  const [type, setType] = useState("");
-  const [page, setPage] = useState(1);
+  const [type, setType] = useListState("type", "");
+  const [page, setPage] = useListState("page", 1);
   const [open, setOpen] = useState(false);
   const list = useApi<Paginated<Row>>("admin/stock/adjustments", { type, page });
 
