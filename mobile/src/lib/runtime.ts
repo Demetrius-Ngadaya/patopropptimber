@@ -10,6 +10,8 @@ export type Runtime = {
   apiUrl: string;
   token: string | null;
   userId: number | null;
+  /** Staff use the till and sync; customers use the online shop (no sync). */
+  userType: 'staff' | 'customer' | null;
   branchId: number | null;
   locale: 'en' | 'sw';
   installationId: string | null;
@@ -19,6 +21,7 @@ const state: Runtime = {
   apiUrl: '',
   token: null,
   userId: null,
+  userType: null,
   branchId: null,
   locale: 'en',
   installationId: null,

@@ -7,7 +7,7 @@ import { useLive } from '@/lib/useLive';
 import { unreadCount } from '@/db/repo';
 import { useSync } from '@/sync/manager';
 import { useT } from '@/i18n';
-import { Badge, Card, Group, Header, ListRow, Screen, Section, Text, confirm, space, useColors } from '@/ui';
+import { Badge, Card, Group, Header, IconButton, ListRow, Screen, Section, Text, confirm, space, useColors } from '@/ui';
 import { BranchSwitcher, useBranchName } from '@/features/common';
 
 export default function More() {
@@ -24,7 +24,7 @@ export default function More() {
     const pending = waiting + attention;
     const ok = await confirm({
       title: t('Sign out?'),
-      message: pending ? t('{n} changes are not on the server yet. They stay on this phone and are sent when you sign in again.', { n: pending }) : t('You can sign in again at any time.'),
+      message: pending ? t('{n} changes are not on the server yet. They stay on this phone and are sent when you sign in again.', { n: pending }) : t('You can sign in again at any time, even without internet.'),
       confirm: t('Sign out'),
       danger: !!pending,
     });
@@ -33,7 +33,7 @@ export default function More() {
 
   return (
     <Screen scroll>
-      <Header title={t('More')} />
+      <Header title={t('More')} right={<IconButton icon="log-out-outline" tone="danger" label={t('Sign out')} onPress={signOut} />} />
       <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
         <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }}>
           <Text variant="heading" style={{ color: '#fff' }}>
@@ -68,12 +68,13 @@ export default function More() {
           />
           <ListRow icon="volume-high-outline" iconTone="success" title={t('Notification sounds & voice')} subtitle={t('Voice, sound or vibration for each kind')} onPress={() => router.push('/settings/notifications')} />
           <ListRow icon="settings-outline" iconTone="neutral" title={t('Settings')} subtitle={t('Language, theme, app lock, sync')} onPress={() => router.push('/settings')} />
+          <ListRow icon="key-outline" iconTone="warning" title={t('Change password')} onPress={() => router.push('/settings/password')} />
         </Group>
       </Section>
 
       <Section>
         <Group>
-          <ListRow icon="log-out-outline" iconTone="danger" title={t('Sign out')} danger onPress={signOut} chevron={false} />
+          <ListRow icon="log-out-outline" iconTone="danger" title={t('Sign out')} subtitle={t('This phone keeps your data, so you can sign in again even without internet.')} danger onPress={signOut} chevron={false} />
         </Group>
       </Section>
 

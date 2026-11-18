@@ -58,6 +58,10 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   const { apiUrl, token, branchId, locale } = runtime.get();
   if (!apiUrl) throw new ApiError(t('The server address is not set.'), 0, 'NO_SERVER', null, true);
 
+  // Signed in without internet: there is no login token yet. Treat it like being
+  // offline (nothing is lost) instead of asking the server, which would end the session.
+  if (options.auth !== false && !token) throw new ApiError(t('Waiting for the internet to finish signing in.'), 0, 'NO_TOKEN', null, true);
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? 20000);
   options.signal?.addEventListener('abort', () => controller.abort());

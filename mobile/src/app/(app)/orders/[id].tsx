@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Linking, ScrollView, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCan } from '@/lib/session';
 import { useLive } from '@/lib/useLive';
 import { dateTime, money, phoneIntl, qty } from '@/lib/format';
@@ -28,6 +29,7 @@ const NEXT: Record<OrderStatus, OrderStatus[]> = {
 export default function OrderScreen() {
   const t = useT();
   const c = useColors();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const canUpdate = useCan('orders.update_status');
   const canCancel = useCan('orders.cancel');
@@ -145,7 +147,7 @@ export default function OrderScreen() {
       </ScrollView>
 
       {next.length || (canComplete && ['ready', 'out_for_delivery', 'processing', 'confirmed'].includes(status)) ? (
-        <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: space.lg, paddingBottom: space.xxl, backgroundColor: c.surface, borderTopWidth: 1, borderTopColor: c.border, gap: space.sm }}>
+        <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: space.lg, paddingBottom: insets.bottom + space.md, backgroundColor: c.surface, borderTopWidth: 1, borderTopColor: c.border, gap: space.sm }}>
           <View style={{ flexDirection: 'row', gap: space.sm }}>
             {next
               .filter((s) => s !== 'cancelled')

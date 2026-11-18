@@ -26,6 +26,11 @@ export function routeFor(data: NotificationData): string {
   const path = url.split('?')[0];
   const m = (re: RegExp) => path.match(re)?.[1];
 
+  // A customer's own order (shop app).
+  const shopOrder = m(/^\/shop\/orders\/([^/]+)/);
+  if (shopOrder) return `/my-orders/${shopOrder}`;
+  if (data.type === 'customer_order') return '/my-orders';
+
   const order = m(/^\/admin\/orders\/(\d+)/);
   if (order) return `/orders/${order}`;
   const product = m(/^\/admin\/products\/(\d+)/);

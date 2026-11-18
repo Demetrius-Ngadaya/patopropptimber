@@ -1,4 +1,5 @@
-import { Platform, type ColorValue } from 'react-native';
+import { type ColorValue } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { haptic } from '@/lib/haptics';
 import { Tabs } from 'expo-router/js-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +18,8 @@ export default function TabsLayout() {
   const canOrders = useCan('orders.view');
   const canProducts = useCan('products.view|pos.access');
   const open = useLive(countOpenOrders, ['orders'], []).data ?? 0;
+  // Android draws apps behind its own Back / Home buttons (edge to edge): lift the bar above them.
+  const insets = useSafeAreaInsets();
 
   const icon = (name: IconName, focused: IconName) =>
     function TabIcon({ color, focused: on }: { color: ColorValue; focused: boolean }) {
@@ -32,9 +35,9 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: c.surface,
           borderTopColor: c.border,
-          height: Platform.OS === 'ios' ? 86 : 66,
+          height: 60 + Math.max(insets.bottom, 8),
           paddingTop: 6,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
+          paddingBottom: Math.max(insets.bottom, 8),
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '700' },
         sceneStyle: { backgroundColor: c.bg },

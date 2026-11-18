@@ -214,10 +214,10 @@ async function pushToken(ask: boolean): Promise<PushStatus> {
 export async function registerDevice(ask = true): Promise<PushStatus> {
   lastStatus = await pushToken(ask);
   const prefs = await currentPrefs();
-  const { installationId, locale } = runtime.get();
+  const { installationId, locale, userType } = runtime.get();
   if (!installationId || !runtime.get().token) return lastStatus;
   await api
-    .post('admin/mobile/devices', {
+    .post(userType === 'customer' ? 'shop/account/devices' : 'admin/mobile/devices', {
       installation_id: installationId,
       platform: Platform.OS === 'ios' ? 'ios' : 'android',
       push_token: lastStatus.token,
@@ -241,7 +241,7 @@ export async function registerDevice(ask = true): Promise<PushStatus> {
 /** "Send a test" in Settings: through the server and the real push service when possible. */
 export async function sendTest(category: NotificationCategory): Promise<'push' | 'local'> {
   const { installationId } = runtime.get();
-  if (lastStatus.token && installationId) {
+  if (lastStatus.token && installationId && runtime.get().userType !== 'customer') {
     try {
       const res = await api.post<{ sent: boolean }>('admin/mobile/devices/test', { installation_id: installationId, category });
       if (res.data.sent) return 'push';

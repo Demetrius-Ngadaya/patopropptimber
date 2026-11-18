@@ -2,7 +2,6 @@ import { onSession } from './session';
 import { onPrefsChanged } from './prefs';
 import { runtime } from './runtime';
 import { useLocale } from '../i18n';
-import { wipeLocalData } from '../db/database';
 import { registerDevice, updateBadge } from '../notifications';
 import { ensureChannels } from '../notifications/channels';
 import { onSyncPrefsChanged, requestSync, startSync, stopSync, switchBranch } from '../sync/manager';
@@ -21,17 +20,19 @@ export function wireApp() {
 
   onSession(async (event) => {
     if (event === 'signedIn') {
-      await startSync();
+      const customer = runtime.get().userType === 'customer';
+      if (!customer) await startSync(); // the shop works online; only staff keep an offline copy
       registerDevice(true).catch(() => undefined);
-      registerBackgroundWork().catch(() => undefined);
+      registerBackgroundWork(customer).catch(() => undefined);
     }
     if (event === 'refreshed') updateBadge().catch(() => undefined);
     if (event === 'branchChanged') await switchBranch();
     if (event === 'signedOut') {
       stopSync();
       await unregisterBackgroundWork();
-      // Keep unsent changes (they go when the same person signs in again); drop the rest.
-      await wipeLocalData(true);
+      // The phone's copy (products, customers, unsent sales) stays, so the same person
+      // can sign in again even without internet. If someone else signs in, it is wiped
+      // first (session.ts → finish).
     }
   });
 

@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\Shop\DeliveryTrackingController;
 use App\Http\Controllers\Api\V1\Shop\FaqController;
 use App\Http\Controllers\Api\V1\Shop\ShopAssistantController;
 use App\Http\Controllers\Api\V1\Site\VisitController;
+use App\Http\Controllers\Api\V1\Mobile\MobileController;
 use Illuminate\Support\Facades\Route;
 
 // Public storefront
@@ -42,4 +43,8 @@ Route::middleware(['auth:sanctum', 'session.timeout', 'customer', 'activity', 't
         Route::post('/orders/{number}/cancel', [AccountController::class, 'cancelOrder'])->name('orders.cancel');
         Route::get('/orders/{number}/payment', [AccountController::class, 'orderPayment'])->name('orders.payment');
         Route::post('/orders/{number}/pay', [AccountController::class, 'payOrder'])->middleware('throttle:10,1')->name('orders.pay');
+        // The PatoPro app on a customer's phone: order updates arrive as push alerts
+        // (sound, vibration, both or silent, as the customer chose in the app).
+        Route::post('/devices', [MobileController::class, 'registerDevice'])->middleware('throttle:30,1')->name('devices.register');
+        Route::delete('/devices/{installationId}', [MobileController::class, 'forgetDevice'])->whereUuid('installationId')->name('devices.forget');
     });

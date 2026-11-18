@@ -19,6 +19,7 @@ use App\Services\Core\SettingsService;
 use App\Services\Delivery\DeliveryFees;
 use App\Services\Inventory\StockService;
 use App\Services\Messaging\CustomerMessages;
+use App\Services\Mobile\PushNotifications;
 use App\Services\Notifications\StaffNotices;
 use App\Services\Payments\OnlinePaymentService;
 use App\Support\Afterwards;
@@ -287,5 +288,13 @@ class OrderService
         if ($this->settings->bool('sms_order_updates')) {
             Afterwards::run(fn () => $this->customerMessages->orderUpdate($order));
         }
+        // Customers using the PatoPro app also get a push alert on their phone.
+        $id = $order->id;
+        Afterwards::run(function () use ($id) {
+            $fresh = Order::query()->find($id);
+            if ($fresh) {
+                app(PushNotifications::class)->customerOrder($fresh);
+            }
+        });
     }
 }

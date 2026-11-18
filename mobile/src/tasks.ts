@@ -33,7 +33,7 @@ async function ensureRuntime(): Promise<boolean> {
   if (!stored || (stored.expiresAt && new Date(stored.expiresAt).getTime() < Date.now())) return false;
   const locale = prefs.locale ?? stored.user.locale ?? deviceLocale();
   useLocale.getState().setLocale(locale);
-  runtime.set({ apiUrl: server || DEFAULT_API_URL, token: stored.token, userId: stored.user.id, branchId: stored.branchId, installationId, locale });
+  runtime.set({ apiUrl: server || DEFAULT_API_URL, token: stored.token, userId: stored.user.id, userType: stored.user.type, branchId: stored.branchId, installationId, locale });
   return true;
 }
 
@@ -65,11 +65,16 @@ TaskManager.defineTask<Notifications.NotificationTaskPayload>(NOTIFICATION_TASK,
   }
 });
 
-export async function registerBackgroundWork(): Promise<void> {
+export async function registerBackgroundWork(customer = false): Promise<void> {
   try {
     await Notifications.registerTaskAsync(NOTIFICATION_TASK);
   } catch {
     // Not available in Expo Go: fine in a development / store build.
+  }
+  if (customer) {
+    // Customers have nothing to sync in the background: only order alerts (push).
+    await BackgroundTask.unregisterTaskAsync(SYNC_TASK).catch(() => undefined);
+    return;
   }
   try {
     const prefs = await currentPrefs();

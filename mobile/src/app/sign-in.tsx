@@ -1,8 +1,9 @@
 import React, { useRef, useState } from 'react';
 import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { ApiError } from '@/lib/api';
+import { ApiError, api } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { usePrefs } from '@/lib/prefs';
 import { useLocale, useT } from '@/i18n';
@@ -23,14 +24,41 @@ export default function SignIn() {
   const [serverOpen, setServerOpen] = useState(!apiUrl || apiUrl.includes('example.com'));
   const [server, setServerDraft] = useState(apiUrl.includes('example.com') ? '' : apiUrl);
   const passwordRef = useRef<React.ComponentRef<typeof TextInput>>(null);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [email, setEmail] = useState('');
+  const [forgotBusy, setForgotBusy] = useState(false);
+  const [forgotDone, setForgotDone] = useState<string | null>(null);
+  const [forgotError, setForgotError] = useState<string | null>(null);
   const twoFactor = status === 'twoFactor';
 
+  // Every failure says what actually went wrong: wrong password, locked account,
+  // no internet on the phone, or the server not answering.
   const explain = (e: unknown) => {
     if (e instanceof ApiError) {
-      if (e.offline) return t('Cannot reach the server. Check the internet connection and the server address.');
+      if (['OFFLINE_FIRST', 'OFFLINE_STALE', 'OFFLINE_WRONG', 'SERVER_UNREACHABLE'].includes(e.code ?? '')) return e.message;
+      if (e.status === 429) return e.firstError || t('Too many attempts. Wait a minute and try again.');
+      if (e.offline) return t('Cannot reach the PatoPro server. Check that the phone has internet (data bundle / Wi-Fi) and try again.');
       return e.firstError;
     }
     return e instanceof Error ? e.message : String(e);
+  };
+
+  const sendReset = async () => {
+    setForgotError(null);
+    setForgotDone(null);
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+      setForgotError(t('Enter the email address of your account.'));
+      return;
+    }
+    setForgotBusy(true);
+    try {
+      const res = await api.post('auth/forgot-password', { email: email.trim() }, { auth: false });
+      setForgotDone(res.message ?? t('If an account with that email exists, a reset link has been sent.'));
+    } catch (e) {
+      setForgotError(explain(e));
+    } finally {
+      setForgotBusy(false);
+    }
   };
 
   const submit = async () => {
@@ -156,7 +184,27 @@ export default function SignIn() {
             ) : null}
             <Button title={twoFactor ? t('Verify') : t('Sign in')} size="lg" loading={busy} onPress={submit} iconRight="arrow-forward" />
             {twoFactor ? <Button title={t('Back')} variant="ghost" onPress={() => useSession.setState({ status: 'signedOut', challenge: null })} /> : null}
+            {!twoFactor ? (
+              <Pressable onPress={() => { setForgotOpen(true); setForgotDone(null); setForgotError(null); }} hitSlop={8} style={{ alignSelf: 'center' }}>
+                <Text variant="label" tone="primary">
+                  {t('Forgot password?')}
+                </Text>
+              </Pressable>
+            ) : null}
           </Card>
+
+          {!twoFactor ? (
+            <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+              <Ionicons name="bag-handle-outline" size={22} color={c.accent} />
+              <View style={{ flex: 1 }}>
+                <Text variant="bodyStrong">{t('Shopping with us?')}</Text>
+                <Text variant="caption" tone="muted">
+                  {t('Customers sign in above, or create a free account to order from the shop.')}
+                </Text>
+              </View>
+              <Button title={t('Create account')} size="sm" variant="secondary" onPress={() => router.push('/register')} />
+            </Card>
+          ) : null}
 
           <Pressable onPress={() => setServerOpen(true)} style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, padding: space.sm }}>
             <Ionicons name="server-outline" size={15} color={c.textFaint} />
@@ -169,10 +217,24 @@ export default function SignIn() {
           </Pressable>
 
           <Text variant="caption" tone="faint" center>
-            © {new Date().getFullYear()} SHEZONI Technologies Ltd · PatoPro v1.0
+            © {new Date().getFullYear()} SHEZONI Technologies Ltd · PatoPro
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <Sheet
+        visible={forgotOpen}
+        onClose={() => setForgotOpen(false)}
+        title={t('Forgot password')}
+        footer={forgotDone ? <Button title={t('Done')} onPress={() => setForgotOpen(false)} /> : <Button title={t('Send reset link')} icon="mail-outline" loading={forgotBusy} onPress={sendReset} />}
+      >
+        <View style={{ gap: space.md }}>
+          <Text tone="muted">{t('Enter the email address of your account. We will send you a link to choose a new password. No email on your account? Ask the shop administrator to reset it.')}</Text>
+          <Input value={email} onChangeText={setEmail} placeholder="jina@mfano.co.tz" autoCapitalize="none" autoCorrect={false} keyboardType="email-address" icon="mail-outline" />
+          {forgotError ? <Text variant="label" tone="danger">{forgotError}</Text> : null}
+          {forgotDone ? <Text variant="label" tone="primary">{forgotDone}</Text> : null}
+        </View>
+      </Sheet>
 
       <Sheet
         visible={serverOpen}

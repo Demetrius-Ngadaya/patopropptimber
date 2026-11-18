@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, View } from 'react-native';
+import { runtime } from '@/lib/runtime';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -77,7 +78,7 @@ export function ScreenHeader({ title, subtitle, right, onBack }: { title: string
   return (
     <View style={{ paddingTop: insets.top, backgroundColor: c.bg }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs, height: 56, paddingHorizontal: space.sm }}>
-        <IconButton icon="chevron-back" label={t('Back')} onPress={onBack ?? (() => (router.canGoBack() ? router.back() : router.replace('/')))} />
+        <IconButton icon="chevron-back" label={t('Back')} onPress={onBack ?? (() => (router.canGoBack() ? router.back() : router.replace(runtime.get().userType === 'customer' ? '/shop' : '/')))} />
         <View style={{ flex: 1 }}>
           <Text variant="heading" numberOfLines={1}>
             {title}

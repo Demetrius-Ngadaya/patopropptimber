@@ -11,6 +11,7 @@ const KEYS = {
   installation: 'pp.installation',
   server: 'pp.server',
   pin: 'pp.pin',
+  offline: 'pp.offline-login',
 } as const;
 
 // The browser preview has no keychain: there (only) values live in localStorage.
@@ -45,6 +46,25 @@ export type StoredSession = {
   branchId: number | null;
 };
 
+/**
+ * What lets the last person sign in again with no internet: a salted hash of
+ * their password (never the password), the names they may type, and who they are.
+ */
+export type OfflineLogin = {
+  identifiers: string[];
+  salt: string;
+  hash: string;
+  user: import('./types').User;
+  branchId: number | null;
+  /** Last time the server checked this password: offline sign-in works for 30 days after it. */
+  verifiedAt: string;
+};
+
+export const OFFLINE_LOGIN_DAYS = 30;
+
+const passwordHash = (salt: string, password: string) => Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, `${salt}:patopro-offline:${password}`);
+const clean = (s: string | null | undefined) => (s ?? '').trim().toLowerCase();
+
 export const secure = {
   async session(): Promise<StoredSession | null> {
     const raw = await get(KEYS.session);
@@ -65,6 +85,34 @@ export const secure = {
     await set(KEYS.installation, id);
     return id;
   },
+
+  /** After a sign-in the server accepted: remember it for signing in offline later. */
+  async rememberOfflineLogin(typed: string, password: string, user: import('./types').User, branchId: number | null): Promise<void> {
+    const salt = Crypto.randomUUID();
+    const identifiers = [...new Set([typed, user.username, user.email, user.phone].map(clean).filter(Boolean))];
+    const record: OfflineLogin = { identifiers, salt, hash: await passwordHash(salt, password), user, branchId, verifiedAt: new Date().toISOString() };
+    await set(KEYS.offline, JSON.stringify(record));
+  },
+  async offlineLogin(): Promise<OfflineLogin | null> {
+    const raw = await get(KEYS.offline);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as OfflineLogin;
+    } catch {
+      return null;
+    }
+  },
+  /**
+   * 'ok' with the saved person, 'unknown' when this phone has no saved sign-in for
+   * that name (or it is too old), 'wrong' when the password does not match.
+   */
+  async checkOfflineLogin(typed: string, password: string): Promise<{ result: 'ok'; login: OfflineLogin } | { result: 'unknown' | 'wrong' | 'stale' }> {
+    const login = await secure.offlineLogin();
+    if (!login || !login.identifiers.includes(clean(typed))) return { result: 'unknown' };
+    if (Date.now() - new Date(login.verifiedAt).getTime() > OFFLINE_LOGIN_DAYS * 86400_000) return { result: 'stale' };
+    return (await passwordHash(login.salt, password)) === login.hash ? { result: 'ok', login } : { result: 'wrong' };
+  },
+  forgetOfflineLogin: () => set(KEYS.offline, null),
 
   server: () => get(KEYS.server),
   saveServer: (url: string | null) => set(KEYS.server, url),

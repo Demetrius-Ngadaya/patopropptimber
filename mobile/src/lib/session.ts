@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
+import NetInfo from '@react-native-community/netinfo';
 import { create } from 'zustand';
 import { api, ApiError } from './api';
 import { runtime } from './runtime';
@@ -9,7 +10,7 @@ import { currentPrefs } from './prefs';
 import type { BusinessSettings, User } from './types';
 import { getMeta, setMeta } from '../db/meta';
 import { wipeLocalData } from '../db/database';
-import { deviceLocale, useLocale } from '../i18n';
+import { deviceLocale, t, useLocale } from '../i18n';
 
 /**
  * Who is signed in, on which branch, against which server. Survives restarts
@@ -28,11 +29,15 @@ type SessionState = {
   challenge: string | null;
   /** The server ended the login (expired / revoked): sign in again, offline work is kept. */
   expired: boolean;
+  /** Signed in on this phone without internet: the real sign-in finishes when the internet returns. */
+  offline: boolean;
   boot: () => Promise<void>;
   setServer: (url: string) => Promise<void>;
   login: (login: string, password: string) => Promise<'ok' | 'two_factor'>;
   verifyTwoFactor: (code: string) => Promise<void>;
   refresh: () => Promise<void>;
+  /** A customer created an account in the app (signed in straight away). */
+  register: (data: Record<string, unknown>) => Promise<void>;
   setBranch: (id: number) => Promise<void>;
   logout: () => Promise<void>;
   can: (permission: string) => boolean;
@@ -79,21 +84,93 @@ export const useSession = create<SessionState>((set, get) => {
     await secure.saveSession({ token, expiresAt: previous?.expiresAt ?? null, user, branchId });
   };
 
+  // Kept in memory only (never saved): finishes an offline sign-in when the internet returns,
+  // and remembers the password's hash after the two-step code.
+  let pending: { login: string; password: string } | null = null;
+  let stopWatching: (() => void) | null = null;
+
   const finish = async (data: LoginResult) => {
     const lastUser = await getMeta<number | null>('lastUserId', null);
     if (lastUser !== null && lastUser !== data.user.id) {
       // Another person on this phone: they must not see the previous user's data.
       await wipeLocalData(true);
+      await secure.forgetOfflineLogin();
     }
     await setMeta('lastUserId', data.user.id);
-    const branchId = data.user.branch?.id ?? data.user.branches[0]?.id ?? null;
+    const branchId = data.user.branch?.id ?? data.user.branches?.[0]?.id ?? null;
     const stored: StoredSession = { token: data.token, expiresAt: data.expires_at, user: data.user, branchId };
     await secure.saveSession(stored);
-    runtime.set({ token: data.token, userId: data.user.id, branchId });
+    if (pending && data.user.type === 'staff') {
+      await secure.rememberOfflineLogin(pending.login, pending.password, data.user, branchId).catch(() => undefined);
+    }
+    pending = null;
+    stopWatching?.();
+    stopWatching = null;
+    runtime.set({ token: data.token, userId: data.user.id, userType: data.user.type, branchId });
     applyLocale(data.user, (await currentPrefs()).locale);
-    set({ status: 'ready', user: data.user, branchId, challenge: null, expired: false });
-    await get().refresh();
+    const wasOffline = get().offline;
+    set({ status: 'ready', user: data.user, branchId, challenge: null, expired: false, offline: false });
+    await get().refresh().catch(() => undefined);
+    // After an offline start the app is already running: only the sync needs a nudge.
+    await emit(wasOffline ? 'refreshed' : 'signedIn');
+  };
+
+  /** Sign in from the copy kept on this phone (no internet). */
+  const signInOffline = async (login: string, password: string) => {
+    const check = await secure.checkOfflineLogin(login, password);
+    if (check.result === 'unknown') {
+      throw new ApiError(t('No internet. The first sign-in on this phone needs internet; after that you can sign in without it.'), 0, 'OFFLINE_FIRST', null, true);
+    }
+    if (check.result === 'stale') {
+      throw new ApiError(t('No internet, and this phone has not checked your password with the server for over 30 days. Connect to the internet once to sign in.'), 0, 'OFFLINE_STALE', null, true);
+    }
+    if (check.result !== 'ok') {
+      throw new ApiError(t('Wrong username or password. (No internet: checked against your last sign-in on this phone.)'), 401, 'OFFLINE_WRONG');
+    }
+    const { user, branchId } = check.login;
+    if ((await getMeta<number | null>('lastUserId', null)) !== user.id) {
+      throw new ApiError(t('No internet. The first sign-in on this phone needs internet; after that you can sign in without it.'), 0, 'OFFLINE_FIRST', null, true);
+    }
+    pending = { login, password };
+    runtime.set({ token: null, userId: user.id, userType: user.type, branchId });
+    applyLocale(user, (await currentPrefs()).locale);
+    set({ status: 'ready', user, branchId, challenge: null, expired: false, offline: true });
     await emit('signedIn');
+    watchForInternet();
+  };
+
+  /** Offline sign-in: as soon as the internet is back, sign in with the server for real. */
+  const watchForInternet = () => {
+    stopWatching?.();
+    let trying = false;
+    const attempt = async () => {
+      if (trying || !pending || !get().offline) return;
+      trying = true;
+      try {
+        await get().login(pending.login, pending.password);
+      } catch (e) {
+        if (e instanceof ApiError && !e.offline) {
+          // The password changed, or the account was stopped: sign in again (offline work is kept).
+          pending = null;
+          stopWatching?.();
+          stopWatching = null;
+          await secure.forgetOfflineLogin();
+          runtime.set({ token: null });
+          set({ status: 'signedOut', offline: false, expired: true, challenge: null });
+          await emit('signedOut');
+        }
+      } finally {
+        trying = false;
+      }
+    };
+    const unsubscribe = NetInfo.addEventListener((net) => {
+      if (net.isConnected && net.isInternetReachable !== false) attempt();
+    });
+    const timer = setInterval(attempt, 60_000);
+    stopWatching = () => {
+      unsubscribe();
+      clearInterval(timer);
+    };
   };
 
   return {
@@ -104,6 +181,7 @@ export const useSession = create<SessionState>((set, get) => {
     apiUrl: DEFAULT_API_URL,
     challenge: null,
     expired: false,
+    offline: false,
 
     async boot() {
       const [prefs, server, installationId, stored, settings] = await Promise.all([
@@ -130,7 +208,7 @@ export const useSession = create<SessionState>((set, get) => {
         set({ status: 'signedOut', apiUrl, settings, expired: !!stored });
         return;
       }
-      runtime.set({ token: stored.token, userId: stored.user.id, branchId: stored.branchId });
+      runtime.set({ token: stored.token, userId: stored.user.id, userType: stored.user.type, branchId: stored.branchId });
       applyLocale(stored.user, prefs.locale);
       // Ready straight away from the phone's copy: the network refresh happens in the background.
       set({ status: 'ready', user: stored.user, branchId: stored.branchId, apiUrl, settings });
@@ -147,20 +225,53 @@ export const useSession = create<SessionState>((set, get) => {
 
     async login(login, password) {
       const deviceName = [Device.manufacturer, Device.modelName].filter(Boolean).join(' ') || 'Phone';
-      const res = await api.post<LoginResult & { two_factor_required?: boolean; challenge?: string }>(
-        'auth/login',
-        { login, password, client: 'mobile', device_name: `PatoPro app · ${deviceName}` },
-        { auth: false },
-      );
+      const net = await NetInfo.fetch().catch(() => null);
+      const background = get().offline; // finishing an offline sign-in, not the sign-in screen
+      if (!background && net && net.isConnected === false) {
+        await signInOffline(login, password);
+        return 'ok';
+      }
+      let res: Awaited<ReturnType<typeof api.post<LoginResult & { two_factor_required?: boolean; challenge?: string }>>>;
+      try {
+        res = await api.post<LoginResult & { two_factor_required?: boolean; challenge?: string }>(
+          'auth/login',
+          { login, password, client: 'mobile', device_name: `PatoPro app · ${deviceName}` },
+          { auth: false, timeoutMs: 15000 },
+        );
+      } catch (e) {
+        if (!(e instanceof ApiError) || !e.offline || background) throw e;
+        // The phone has a network but the server did not answer: the offline copy still works.
+        const saved = await secure.checkOfflineLogin(login, password);
+        if (saved.result === 'ok' || saved.result === 'wrong') {
+          await signInOffline(login, password);
+          return 'ok';
+        }
+        const noInternet = net?.isInternetReachable === false;
+        throw new ApiError(
+          noInternet
+            ? t('No internet. The first sign-in on this phone needs internet; after that you can sign in without it.')
+            : e.code === 'TIMEOUT'
+              ? t('The PatoPro server took too long to answer. Check the internet (data bundle / Wi-Fi) and try again.')
+              : t('Cannot reach the PatoPro server ({server}). Check that the phone has internet (data bundle / Wi-Fi) and try again.', { server: get().apiUrl.replace(/^https?:\/\//, '') }),
+          0,
+          noInternet ? 'OFFLINE_FIRST' : 'SERVER_UNREACHABLE',
+          null,
+          true,
+        );
+      }
       if (res.data.two_factor_required && res.data.challenge) {
-        set({ status: 'twoFactor', challenge: res.data.challenge });
+        pending = { login, password };
+        set({ status: 'twoFactor', challenge: res.data.challenge, offline: false });
         return 'two_factor';
       }
-      if (res.data.user.type !== 'staff') {
-        throw new ApiError('The PatoPro app is for shop staff. Customers can order on the online shop.', 403, 'NOT_STAFF');
-      }
+      pending = { login, password };
       await finish(res.data);
       return 'ok';
+    },
+
+    async register(data) {
+      const res = await api.post<{ token: string; user: User }>('shop/register', data, { auth: false });
+      await finish({ token: res.data.token, expires_at: new Date(Date.now() + 30 * 86400_000).toISOString(), user: res.data.user });
     },
 
     async verifyTwoFactor(code) {
@@ -172,6 +283,18 @@ export const useSession = create<SessionState>((set, get) => {
 
     /** Latest user, permissions and business settings (silently skipped offline). */
     async refresh() {
+      if (get().user?.type === 'customer') {
+        try {
+          const [me, pub] = await Promise.all([api.get<User>('shop/account'), api.get<BusinessSettings>('public/settings', undefined, { auth: false })]);
+          setCurrency(pub.data.currency);
+          await setMeta('settings', pub.data);
+          set({ user: { ...get().user, ...me.data } as User, settings: pub.data });
+          await persist();
+        } catch (e) {
+          if (!(e instanceof ApiError) || !e.offline) throw e;
+        }
+        return;
+      }
       try {
         const res = await api.get<{ user: User; settings: BusinessSettings }>('admin/mobile/bootstrap');
         const { user, settings } = res.data;
@@ -197,14 +320,18 @@ export const useSession = create<SessionState>((set, get) => {
     },
 
     async logout() {
-      const { installationId } = runtime.get();
+      const { installationId, userType } = runtime.get();
       // Best effort: the phone forgets the login even when offline.
-      if (installationId) await api.delete(`admin/mobile/devices/${installationId}`, { timeoutMs: 5000 }).catch(() => undefined);
+      const devices = userType === 'customer' ? 'shop/account/devices' : 'admin/mobile/devices';
+      if (installationId) await api.delete(`${devices}/${installationId}`, { timeoutMs: 5000 }).catch(() => undefined);
       await api.post('auth/logout', {}, { timeoutMs: 5000 }).catch(() => undefined);
+      pending = null;
+      stopWatching?.();
+      stopWatching = null;
       await emit('signedOut');
       await secure.saveSession(null);
       runtime.set({ token: null });
-      set({ status: 'signedOut', user: null, challenge: null, expired: false });
+      set({ status: 'signedOut', user: null, challenge: null, expired: false, offline: false });
     },
 
     can(permission) {

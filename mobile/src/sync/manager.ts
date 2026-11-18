@@ -67,8 +67,8 @@ export async function refreshCounts() {
  * Resolves with the report, or null when skipped.
  */
 export async function requestSync(trigger: SyncTrigger, opts: { force?: boolean; only?: string[] } = {}): Promise<SyncReport | null> {
-  const { token, userId } = runtime.get();
-  if (!token || !userId) return null;
+  const { token, userId, userType } = runtime.get();
+  if (!token || !userId || userType === 'customer') return null;
   const force = opts.force ?? trigger === 'manual';
 
   if (running) {

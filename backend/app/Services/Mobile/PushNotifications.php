@@ -5,6 +5,7 @@ namespace App\Services\Mobile;
 use App\Models\Core\AppNotification;
 use App\Models\Core\User;
 use App\Models\Mobile\MobileDevice;
+use App\Models\Sales\Order;
 use App\Support\Afterwards;
 use App\Support\NotificationCategories;
 use Illuminate\Support\Collection;
@@ -63,6 +64,76 @@ class PushNotifications
                 && AppNotification::query()->visibleTo($d->user)->whereKey($notification->id)->exists());
 
         $messages = $devices->map(fn (MobileDevice $d) => $this->message($notification, $d))->filter()->values();
+
+        return $this->deliver($messages);
+    }
+
+    /**
+     * Tells a customer on their own phone(s) that their order moved on
+     * (confirmed, being prepared, on the way...). Sound / vibration follow the
+     * choice made in the app ("orders" alerts).
+     */
+    public function customerOrder(Order $order): int
+    {
+        if (! config('mauzo.mobile.push_enabled')) {
+            return 0;
+        }
+        $order->loadMissing('customer');
+        $userId = $order->customer?->user_id;
+        if (! $userId) {
+            return 0;
+        }
+        $devices = MobileDevice::query()->whereNotNull('push_token')->where('user_id', $userId)->with('user')->get()
+            ->filter(fn (MobileDevice $d) => $d->user && $d->user->is_active && $d->user->isCustomer());
+
+        $messages = $devices->map(function (MobileDevice $device) use ($order) {
+            $alert = $device->alertFor('orders');
+            if (! $alert['enabled']) {
+                return null;
+            }
+            $previous = App::getLocale();
+            App::setLocale(in_array($device->locale ?? $device->user?->locale, ['en', 'sw'], true) ? ($device->locale ?? $device->user->locale) : $previous);
+            try {
+                $status = match ($order->status) {
+                    'confirmed' => __('confirmed'),
+                    'processing' => __('being prepared'),
+                    'ready' => __('ready for collection'),
+                    'out_for_delivery' => __('on the way to you'),
+                    'completed' => __('completed'),
+                    'cancelled' => __('cancelled'),
+                    default => null,
+                };
+                if ($status === null) {
+                    return null;
+                }
+                $title = __('Order :number', ['number' => $order->number]);
+                $body = __('Your order :number is :status.', ['number' => $order->number, 'status' => $status]);
+            } finally {
+                App::setLocale($previous);
+            }
+            $channel = self::channelId($alert['sound'], $alert['vibrate']);
+
+            return array_filter([
+                'to' => $device->push_token,
+                'title' => $title,
+                'body' => $body,
+                'data' => [
+                    'type' => 'customer_order',
+                    'category' => 'orders',
+                    'order_number' => $order->number,
+                    'status' => $order->status,
+                    'url' => '/shop/orders/'.rawurlencode($order->number),
+                    'title' => $title,
+                    'body' => $body,
+                    'sound' => $alert['sound'],
+                    'vibrate' => $alert['vibrate'],
+                    'channel_id' => $channel,
+                ],
+                'sound' => $alert['sound'] ? 'default' : null,
+                'channelId' => $channel,
+                'priority' => 'high',
+            ], fn ($v) => $v !== null);
+        })->filter()->values();
 
         return $this->deliver($messages);
     }

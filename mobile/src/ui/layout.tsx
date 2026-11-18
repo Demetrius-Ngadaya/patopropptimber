@@ -1,7 +1,7 @@
 import React from 'react';
 import { haptic } from '../lib/haptics';
 import { Pressable, RefreshControl, ScrollView, View, type ScrollViewProps, type StyleProp, type ViewStyle } from 'react-native';
-import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets, type Edge } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Card, IconTile, Text, type BadgeTone, type IconName } from './primitives';
 import { radius, space, useColors } from './theme';
@@ -17,6 +17,7 @@ export function Screen({ children, scroll = false, edges = ['top'], padded = tru
   footer?: React.ReactNode;
 } & ScrollViewProps) {
   const c = useColors();
+  const insets = useSafeAreaInsets();
   const pad = padded ? { paddingHorizontal: space.lg } : null;
   return (
     <SafeAreaView edges={edges} style={{ flex: 1, backgroundColor: c.bg }}>
@@ -32,7 +33,7 @@ export function Screen({ children, scroll = false, edges = ['top'], padded = tru
       ) : (
         <View style={[{ flex: 1 }, pad, contentStyle]}>{children}</View>
       )}
-      {footer}
+      {footer ? <View style={{ paddingBottom: edges.includes('bottom') ? 0 : insets.bottom }}>{footer}</View> : null}
     </SafeAreaView>
   );
 }

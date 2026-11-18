@@ -3,7 +3,7 @@
     "name": "PatoPro",
     "slug": "patopro",
     "scheme": "patopro",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -27,7 +27,6 @@
     },
     "android": {
       "package": "com.shezoni.patopro",
-      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#0B3D91",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -94,6 +93,16 @@
         "expo-local-authentication",
         {
           "faceIDPermission": "PatoPro uses Face ID to unlock the app."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": false,
+            "enableShrinkResourcesInReleaseBuilds": false,
+            "extraProguardRules": "-keep class androidx.work.** { *; }\n-keep class * extends androidx.room.RoomDatabase { <init>(...); }\n-keep class androidx.room.** { *; }"
+          }
         }
       ]
     ],
