@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\V1\Mobile\AppReleaseController;
 use App\Http\Controllers\Api\V1\Mobile\MobileController;
+use App\Http\Controllers\Api\V1\Mobile\MobileInstallController;
+use App\Http\Controllers\Api\V1\Mobile\VoiceController;
 use Illuminate\Support\Facades\Route;
 
 // PatoPro mobile app (any signed-in staff member; each synced record and each
@@ -13,7 +15,13 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
     Route::post('/devices/test', [MobileController::class, 'testNotification'])->middleware('throttle:6,1')->name('devices.test');
     Route::get('/sync/pull', [MobileController::class, 'pull'])->name('sync.pull');
     Route::post('/sync/push', [MobileController::class, 'push'])->middleware('throttle:60,1')->name('sync.push');
+    // Voice mode: turn what the person said into one action (when the phone's own
+    // understanding is not sure). Uses the system's AI service.
+    Route::post('/voice/interpret', [VoiceController::class, 'interpret'])->middleware('throttle:40,1')->name('voice.interpret');
 });
+
+// Who has the app on their phone, who signed in, who never tried.
+Route::get('/mobile/installs', [MobileInstallController::class, 'index'])->middleware('permission:mobile_app.manage')->name('mobile.installs.index');
 
 // Versions of the app offered for download (uploaded in small pieces so large APKs
 // pass the web server and PHP upload limits).

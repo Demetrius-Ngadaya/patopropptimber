@@ -14,11 +14,15 @@ import { useT } from '@/i18n';
 import { Button, Card, Group, Input, ListRow, Screen, Section, Segmented, Sheet, SwitchRow, Text, confirm, space, toast } from '@/ui';
 import { ScreenHeader } from '@/features/common';
 import { installedBuild, openDownload, useAppUpdate } from '@/features/AppUpdate';
+import { ServerSheet } from '@/features/ServerSheet';
 
 export default function Settings() {
   const t = useT();
   const prefs = usePrefs();
   const apiUrl = useSession((s) => s.apiUrl);
+  // Only the hidden Software Engineer account sees (and changes) the server address.
+  const developer = useSession((s) => !!s.user?.role?.is_developer);
+  const [serverOpen, setServerOpen] = useState(false);
   const waiting = useSync((s) => s.waiting + s.attention);
   const [bio, setBio] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
@@ -115,6 +119,26 @@ export default function Settings() {
           </Card>
         </Section>
 
+        <Section title={t('Voice mode')}>
+          <Card style={{ paddingVertical: 0 }}>
+            <SwitchRow icon="mic-outline" title={t('Voice mode')} subtitle={t('A microphone button to sell, open screens and record by speaking')} value={prefs.voice.enabled} onChange={(v) => prefs.update({ voice: { enabled: v } })} />
+            {prefs.voice.enabled ? (
+              <>
+                <SwitchRow icon="volume-high-outline" title={t('Say the result out loud')} subtitle={t('Success, failure or a message after every action')} value={prefs.voice.speak} onChange={(v) => prefs.update({ voice: { speak: v } })} />
+                <SwitchRow icon="repeat-outline" title={t('Listen for my answer straight away')} subtitle={t('After a question (yes / no, which product) the microphone opens by itself')} value={prefs.voice.handsFree} onChange={(v) => prefs.update({ voice: { handsFree: v } })} />
+                <View style={{ paddingVertical: space.md, gap: space.sm }}>
+                  <Text variant="label">{t('Language I speak')}</Text>
+                  <Segmented
+                    value={prefs.voice.language}
+                    onChange={(v) => prefs.update({ voice: { language: v } })}
+                    options={[{ value: 'auto', label: t('App language') }, { value: 'sw', label: 'Kiswahili' }, { value: 'en', label: 'English' }]}
+                  />
+                </View>
+              </>
+            ) : null}
+          </Card>
+        </Section>
+
         <Section title={t('Till')}>
           <Card style={{ paddingVertical: 0 }}>
             <SwitchRow icon="pulse-outline" title={t('Vibrate on every tap')} value={prefs.pos.haptics} onChange={(v) => prefs.update({ pos: { haptics: v } })} />
@@ -133,11 +157,12 @@ export default function Settings() {
             {Platform.OS === 'android' ? (
               <ListRow icon="arrow-down-circle-outline" title={t('Check for updates')} subtitle={updateLabel} onPress={checkUpdate} />
             ) : null}
-            <ListRow icon="server-outline" iconTone="neutral" title={t('Server')} subtitle={apiUrl} chevron={false} />
+            {developer ? <ListRow icon="server-outline" iconTone="neutral" title={t('Server')} subtitle={apiUrl} onPress={() => setServerOpen(true)} /> : null}
             <ListRow icon="phone-portrait-outline" iconTone="neutral" title={t('Phone ID')} subtitle={runtime.get().installationId?.slice(0, 8) ?? '—'} chevron={false} />
           </Group>
         </Section>
       </ScrollView>
+      <ServerSheet visible={serverOpen} onClose={() => setServerOpen(false)} />
 
       <Sheet visible={pinOpen} onClose={() => setPinOpen(false)} title={t('Set app PIN')} footer={<Button title={t('Save PIN')} onPress={savePin} />}>
         <View style={{ gap: space.md }}>

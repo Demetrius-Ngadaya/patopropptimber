@@ -93,6 +93,7 @@ final class SettingDefinitions
             'theme_sidebar' => ['default' => '', 'group' => 'appearance', 'type' => 'string', 'rules' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'], 'public' => true, 'label' => 'Sidebar colour'],
 
             // Software Engineer only (never listed for other users): modules switched off for this installation.
+            'mobile_api_url' => ['default' => '', 'group' => 'developer', 'type' => 'string', 'rules' => ['nullable', 'url:https,http', 'max:200'], 'public' => true, 'label' => 'Server address the mobile app uses (empty = the one built into the app)'],
             'disabled_modules' => ['default' => [], 'group' => 'developer', 'type' => 'json', 'rules' => ['array'], 'nested' => ['disabled_modules.*' => ['string', 'max:40']], 'label' => 'Switched-off modules'],
             'currency' => ['default' => 'TZS', 'group' => 'business', 'type' => 'string', 'rules' => ['required', 'string', 'max:10'], 'public' => true, 'label' => 'Currency'],
 

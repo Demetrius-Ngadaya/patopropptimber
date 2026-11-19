@@ -134,9 +134,11 @@ export const navigation: NavGroup[] = [
       { href: "/admin/notification-rules", label: "Automatic notifications", icon: BellRing, perm: ["settings.notifications"], keywords: "alerts schedule daily report reminder" },
       { href: "/admin/expense-categories", label: "Expense categories", icon: BadgePercent, perm: ["expenses.manage_categories"] },
       { href: "/admin/mobile-app", label: "Mobile app downloads", icon: Smartphone, perm: ["mobile_app.manage"], keywords: "apk android download pakua update version" },
+      { href: "/admin/mobile-app/users", label: "Mobile app users", icon: Smartphone, perm: ["mobile_app.manage"], keywords: "app installs phones simu watumiaji sign in tried never" },
       { href: "/admin/login-slides", label: "Pictures: login & shop", icon: Images, perm: ["login_slides.view"], keywords: "slides hero banner picha" },
       { href: "/admin/settings", label: "Settings", icon: Settings, perm: ["settings.view"], keywords: "tin vrn logo receipt company business delivery fee" },
       { href: "/admin/system/modules", label: "System modules", icon: Blocks, perm: ["@developer"] },
+      { href: "/admin/system/mobile", label: "Mobile app server", icon: Smartphone, perm: ["@developer"], keywords: "api url server address app" },
     ],
   },
 ];

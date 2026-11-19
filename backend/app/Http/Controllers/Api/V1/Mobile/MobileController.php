@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Mobile;
 use App\Http\Controllers\Controller;
 use App\Models\Core\PersonalAccessToken;
 use App\Models\Mobile\MobileDevice;
+use App\Models\Mobile\MobileInstall;
 use App\Services\Core\SettingsService;
 use App\Services\Mobile\PushNotifications;
 use App\Services\Mobile\SyncPuller;
@@ -74,6 +75,12 @@ class MobileController extends Controller
 
         $user = $request->user();
         $token = $user->currentAccessToken();
+        // For the "Mobile app users" report: this phone is now used by this person.
+        MobileInstall::signedIn($data['installation_id'], $user, [
+            'platform' => $data['platform'],
+            'app_version' => $data['app_version'] ?? null,
+            'locale' => $data['locale'] ?? null,
+        ]);
         // A push token belongs to one installation: a reinstall gets a new installation id.
         if (! empty($data['push_token'])) {
             MobileDevice::query()->where('push_token', $data['push_token'])->where('installation_id', '!=', $data['installation_id'])->update(['push_token' => null]);

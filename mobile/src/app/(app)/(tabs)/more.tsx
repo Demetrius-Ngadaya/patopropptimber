@@ -67,6 +67,7 @@ export default function More() {
             onPress={() => router.push('/sync')}
           />
           <ListRow icon="volume-high-outline" iconTone="success" title={t('Notification sounds & voice')} subtitle={t('Voice, sound or vibration for each kind')} onPress={() => router.push('/settings/notifications')} />
+          <ListRow icon="mic-outline" iconTone="primary" title={t('Voice mode')} subtitle={t('Sell, open screens and record by speaking')} onPress={() => router.push('/settings')} />
           <ListRow icon="settings-outline" iconTone="neutral" title={t('Settings')} subtitle={t('Language, theme, app lock, sync')} onPress={() => router.push('/settings')} />
           <ListRow icon="key-outline" iconTone="warning" title={t('Change password')} onPress={() => router.push('/settings/password')} />
         </Group>

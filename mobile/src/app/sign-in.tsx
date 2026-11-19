@@ -5,15 +5,16 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ApiError, api } from '@/lib/api';
 import { useSession } from '@/lib/session';
+import { ServerSheet } from '@/features/ServerSheet';
 import { usePrefs } from '@/lib/prefs';
 import { useLocale, useT } from '@/i18n';
-import { Badge, Button, Card, Input, Sheet, Text, radius, space, useColors } from '@/ui';
+import { Button, Card, Input, Sheet, Text, radius, space, useColors } from '@/ui';
 
-/** Sign in: "PatoPro by SHEZONI", then the shop's server, username and password (and the 2-step code). */
+/** Sign in: "PatoPro by SHEZONI", username and password (and the 2-step code). The server address is never shown. */
 export default function SignIn() {
   const t = useT();
   const c = useColors();
-  const { status, apiUrl, expired, login, verifyTwoFactor, setServer } = useSession();
+  const { status, apiUrl, expired, login, verifyTwoFactor } = useSession();
   const locale = useLocale((s) => s.locale);
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -22,7 +23,6 @@ export default function SignIn() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [serverOpen, setServerOpen] = useState(!apiUrl || apiUrl.includes('example.com'));
-  const [server, setServerDraft] = useState(apiUrl.includes('example.com') ? '' : apiUrl);
   const passwordRef = useRef<React.ComponentRef<typeof TextInput>>(null);
   const [forgotOpen, setForgotOpen] = useState(false);
   const [email, setEmail] = useState('');
@@ -63,6 +63,13 @@ export default function SignIn() {
 
   const submit = async () => {
     setError(null);
+    // The Software Engineer's code: opens the server address (hidden from everyone else).
+    if (!twoFactor && identifier.trim() === '111999') {
+      setIdentifier('');
+      setPassword('');
+      setServerOpen(true);
+      return;
+    }
     if (!twoFactor && (!identifier.trim() || !password)) {
       setError(t('Enter your username and password.'));
       return;
@@ -77,14 +84,6 @@ export default function SignIn() {
       setBusy(false);
     }
   };
-
-  const host = (() => {
-    try {
-      return new URL(apiUrl).host;
-    } catch {
-      return apiUrl || t('Not set');
-    }
-  })();
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={['top', 'bottom']}>
@@ -198,23 +197,11 @@ export default function SignIn() {
               <Ionicons name="bag-handle-outline" size={22} color={c.accent} />
               <View style={{ flex: 1 }}>
                 <Text variant="bodyStrong">{t('Shopping with us?')}</Text>
-                <Text variant="caption" tone="muted">
-                  {t('Customers sign in above, or create a free account to order from the shop.')}
-                </Text>
               </View>
               <Button title={t('Create account')} size="sm" variant="secondary" onPress={() => router.push('/register')} />
             </Card>
           ) : null}
 
-          <Pressable onPress={() => setServerOpen(true)} style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, padding: space.sm }}>
-            <Ionicons name="server-outline" size={15} color={c.textFaint} />
-            <Text variant="caption" tone="faint">
-              {t('Server')}: {host}
-            </Text>
-            <Text variant="caption" tone="primary">
-              {t('Change')}
-            </Text>
-          </Pressable>
 
           <Text variant="caption" tone="faint" center>
             © {new Date().getFullYear()} SHEZONI Technologies Ltd · PatoPro
@@ -236,26 +223,7 @@ export default function SignIn() {
         </View>
       </Sheet>
 
-      <Sheet
-        visible={serverOpen}
-        onClose={() => setServerOpen(false)}
-        title={t('Server address')}
-        footer={
-          <Button
-            title={t('Save')}
-            onPress={async () => {
-              await setServer(server);
-              setServerOpen(false);
-            }}
-          />
-        }
-      >
-        <View style={{ gap: space.md }}>
-          <Text tone="muted">{t('The address of your PatoPro backend, as given by your administrator.')}</Text>
-          <Input value={server} onChangeText={setServerDraft} placeholder="https://api.yourshop.co.tz" autoCapitalize="none" autoCorrect={false} keyboardType="url" icon="globe-outline" />
-          <Badge label={t('Must start with https:// on the internet')} tone="info" icon="lock-closed" />
-        </View>
-      </Sheet>
+      <ServerSheet visible={serverOpen} onClose={() => setServerOpen(false)} />
     </SafeAreaView>
   );
 }

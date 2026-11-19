@@ -21,6 +21,8 @@ export type Prefs = {
   sync: { auto: boolean; intervalMinutes: number; wifiOnly: boolean; background: boolean };
   security: { biometric: boolean; pin: boolean; lockAfterMinutes: number };
   pos: { haptics: boolean; sounds: boolean; confirmBeforeCheckout: boolean };
+  /** Voice mode: a microphone button to run the app by speaking. */
+  voice: { enabled: boolean; speak: boolean; handsFree: boolean; language: 'auto' | 'sw' | 'en' };
 };
 
 export const DEFAULT_ALERTS: Record<NotificationCategory, AlertMode> = {
@@ -43,6 +45,7 @@ export const DEFAULT_PREFS: Prefs = {
   sync: { auto: true, intervalMinutes: 2, wifiOnly: false, background: true },
   security: { biometric: false, pin: false, lockAfterMinutes: 1 },
   pos: { haptics: true, sounds: true, confirmBeforeCheckout: false },
+  voice: { enabled: false, speak: true, handsFree: true, language: 'auto' },
 };
 
 type PrefsState = Prefs & {
@@ -71,6 +74,7 @@ const pick = (s: PrefsState): Prefs => ({
   sync: s.sync,
   security: s.security,
   pos: s.pos,
+  voice: s.voice,
 });
 
 const subscribers = new Set<(p: Prefs, previous: Prefs) => void>();

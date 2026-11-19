@@ -3,11 +3,14 @@ import { Image, StyleSheet, View } from 'react-native';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { Text, useColors } from '@/ui';
 
+/** How long the opening animation plays (the app loads behind it). */
+export const SPLASH_MS = 4000;
+
 /**
- * The opening animation, right after the phone's own splash (same logo, same
- * background, so the hand-over is seamless): the logo springs in with a small
- * turn, two rings ripple out, "PatoPro" rises in, then everything fades away
- * as soon as the app is ready (never shorter than ~1.4 s, so it is seen whole).
+ * The opening animation. The phone's own splash is a plain background (no logo),
+ * so this is the first thing seen: the logo springs in with a small turn, two
+ * rings ripple out, a light sweeps over it, "PatoPro" rises in, a bar fills, and
+ * after 4 seconds everything fades away.
  */
 export function AnimatedSplash({ ready, onDone }: { ready: boolean; onDone: () => void }) {
   const c = useColors();
@@ -18,15 +21,17 @@ export function AnimatedSplash({ ready, onDone }: { ready: boolean; onDone: () =
   const shine = useSharedValue(0);
   const out = useSharedValue(1);
   const minTime = useSharedValue(0);
+  const bar = useSharedValue(0);
 
   useEffect(() => {
-    logo.value = withSpring(1, { damping: 9, stiffness: 120, mass: 0.8 });
-    ring.value = withDelay(250, withRepeat(withTiming(1, { duration: 1300, easing: Easing.out(Easing.cubic) }), -1, false));
-    words.value = withDelay(380, withSpring(1, { damping: 14, stiffness: 140 }));
-    tag.value = withDelay(650, withTiming(1, { duration: 450 }));
-    shine.value = withDelay(700, withRepeat(withSequence(withTiming(1, { duration: 900, easing: Easing.inOut(Easing.quad) }), withTiming(0, { duration: 0 })), -1, false));
-    minTime.value = withTiming(1, { duration: 1400 });
-  }, [logo, ring, words, tag, shine, minTime]);
+    logo.value = withDelay(80, withSpring(1, { damping: 9, stiffness: 110, mass: 0.9 }));
+    ring.value = withDelay(350, withRepeat(withTiming(1, { duration: 1500, easing: Easing.out(Easing.cubic) }), -1, false));
+    words.value = withDelay(700, withSpring(1, { damping: 14, stiffness: 120 }));
+    tag.value = withDelay(1200, withTiming(1, { duration: 600 }));
+    shine.value = withDelay(1000, withRepeat(withSequence(withTiming(1, { duration: 1100, easing: Easing.inOut(Easing.quad) }), withDelay(300, withTiming(0, { duration: 0 }))), -1, false));
+    bar.value = withDelay(400, withTiming(1, { duration: SPLASH_MS - 600, easing: Easing.inOut(Easing.quad) }));
+    minTime.value = withTiming(1, { duration: SPLASH_MS });
+  }, [logo, ring, words, tag, shine, minTime, bar]);
 
   useEffect(() => {
     if (!ready) return;
@@ -34,7 +39,7 @@ export function AnimatedSplash({ ready, onDone }: { ready: boolean; onDone: () =
       out.value = withTiming(0, { duration: 380, easing: Easing.in(Easing.quad) }, (finished) => {
         if (finished) runOnJS(onDone)();
       });
-    }, Math.max(0, (1 - minTime.value) * 1400));
+    }, Math.max(0, (1 - minTime.value) * SPLASH_MS));
     return () => clearTimeout(wait);
   }, [ready, onDone, out, minTime]);
 
@@ -51,6 +56,8 @@ export function AnimatedSplash({ ready, onDone }: { ready: boolean; onDone: () =
   const tagStyle = useAnimatedStyle(() => ({ opacity: tag.value, letterSpacing: 2 + tag.value * 2 }));
   const shineStyle = useAnimatedStyle(() => ({ transform: [{ translateX: -120 + shine.value * 240 }, { rotate: '20deg' }], opacity: shine.value > 0 && shine.value < 1 ? 0.55 : 0 }));
   const outStyle = useAnimatedStyle(() => ({ opacity: out.value, transform: [{ scale: 1 + (1 - out.value) * 0.06 }] }));
+  const barStyle = useAnimatedStyle(() => ({ width: `${bar.value * 100}%` }));
+  const barWrap = useAnimatedStyle(() => ({ opacity: tag.value }));
 
   return (
     <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: c.bg, alignItems: 'center', justifyContent: 'center', zIndex: 1000 }, outStyle]}>
@@ -73,6 +80,9 @@ export function AnimatedSplash({ ready, onDone }: { ready: boolean; onDone: () =
         </Text>
       </Animated.View>
       <Animated.Text style={[{ marginTop: 6, fontSize: 12, fontWeight: '700', color: c.textFaint }, tagStyle]}>BY SHEZONI</Animated.Text>
+      <Animated.View style={[{ position: 'absolute', bottom: 90, width: 140, height: 4, borderRadius: 2, backgroundColor: c.surfaceAlt, overflow: 'hidden' }, barWrap]}>
+        <Animated.View style={[{ height: 4, borderRadius: 2, backgroundColor: c.primary }, barStyle]} />
+      </Animated.View>
     </Animated.View>
   );
 }

@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\Catalog\ProductCodeController;
 use App\Http\Controllers\Api\V1\Core\LoginSlideController;
 use App\Http\Controllers\Api\V1\Core\SettingController;
 use App\Http\Controllers\Api\V1\Mobile\AppReleaseController;
+use App\Http\Controllers\Api\V1\Mobile\MobileInstallController;
 use App\Http\Controllers\Api\V1\Shop\PublicDocumentController;
 use Illuminate\Support\Facades\Route;
 
@@ -19,6 +20,8 @@ Route::middleware('throttle:public')->group(function () {
     // The PatoPro Android app, downloaded from the system (it is not in an app store).
     Route::get('/public/app', [AppReleaseController::class, 'current'])->name('public.app');
     Route::get('/public/app/download', [AppReleaseController::class, 'download'])->middleware('throttle:20,1')->name('public.app.download');
+    // The app reports that it was opened / a sign-in failed (feeds the "Mobile app users" report).
+    Route::post('/public/mobile/installs', [MobileInstallController::class, 'ping'])->middleware('throttle:30,1')->name('public.mobile.installs');
     Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])->name('auth.forgot-password');
     Route::post('/auth/reset-password', [AuthController::class, 'resetPassword'])->name('auth.reset-password');
 });

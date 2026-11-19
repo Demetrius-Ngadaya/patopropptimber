@@ -54,4 +54,24 @@ class SystemModuleController extends Controller
 
         return $this->ok(['disabled' => Modules::disabled()], __('System modules updated. Users see the change on their next page load.'));
     }
+
+    /** Software Engineer: the server address every installed app uses. */
+    public function mobile(): JsonResponse
+    {
+        return $this->ok(['api_url' => (string) ($this->settings->get('mobile_api_url') ?? ''), 'built_in' => config('app.url')]);
+    }
+
+    public function updateMobile(Request $request): JsonResponse
+    {
+        $data = $request->validate(['api_url' => ['nullable', 'url:https,http', 'max:200']]);
+        $url = rtrim(trim((string) ($data['api_url'] ?? '')), '/');
+        $url = preg_replace('#/api(/v1)?$#', '', $url);
+        $before = (string) ($this->settings->get('mobile_api_url') ?? '');
+        $this->settings->update(['mobile_api_url' => $url]);
+        $this->audit->event('system.mobile_api_changed', 'Mobile app server address changed', null, ['from' => $before, 'to' => $url], 'security');
+
+        return $this->ok(['api_url' => $url], $url === ''
+            ? __('The apps use their built-in server address again.')
+            : __('Saved. Each app checks the new address and moves to it the next time it connects.'));
+    }
 }

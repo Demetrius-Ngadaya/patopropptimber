@@ -1554,5 +1554,8 @@
     "Picture removed. You can restore it later.": "Picha imeondolewa. Unaweza kuirudisha baadaye.",
     "Top of the shop: show my pictures (slides) instead of the heading text": "Juu ya duka: onyesha picha zangu (slaidi) badala ya maandishi ya kichwa",
     "Top of the shop: heading (empty = \"Order from <business> ...\")": "Juu ya duka: kichwa cha habari (tupu = \"Agiza kutoka <biashara> ...\")",
-    "Top of the shop: line under the heading (empty = how to pay)": "Juu ya duka: mstari chini ya kichwa (tupu = jinsi ya kulipa)"
+    "Top of the shop: line under the heading (empty = how to pay)": "Juu ya duka: mstari chini ya kichwa (tupu = jinsi ya kulipa)",
+    "Voice help from the server is not available (AI is not set up).": "Msaada wa sauti kutoka kwenye seva haupatikani (AI haijawekwa).",
+    "The apps use their built-in server address again.": "Programu zinatumia tena anwani ya seva iliyojengwa ndani yake.",
+    "Saved. Each app checks the new address and moves to it the next time it connects.": "Imehifadhiwa. Kila programu itakagua anwani mpya na kuhamia kwake itakapounganishwa tena."
 }

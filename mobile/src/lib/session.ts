@@ -11,6 +11,7 @@ import type { BusinessSettings, User } from './types';
 import { getMeta, setMeta } from '../db/meta';
 import { wipeLocalData } from '../db/database';
 import { deviceLocale, t, useLocale } from '../i18n';
+import { checkServer, normaliseServer, reportInstall } from './server';
 
 /**
  * Who is signed in, on which branch, against which server. Survives restarts
@@ -32,7 +33,7 @@ type SessionState = {
   /** Signed in on this phone without internet: the real sign-in finishes when the internet returns. */
   offline: boolean;
   boot: () => Promise<void>;
-  setServer: (url: string) => Promise<void>;
+  setServer: (url: string, source?: 'manual' | 'remote') => Promise<void>;
   login: (login: string, password: string) => Promise<'ok' | 'two_factor'>;
   verifyTwoFactor: (code: string) => Promise<void>;
   refresh: () => Promise<void>;
@@ -46,10 +47,27 @@ type SessionState = {
 export const DEFAULT_API_URL: string =
   process.env.EXPO_PUBLIC_API_URL || ((Constants.expoConfig?.extra as { apiUrl?: string } | undefined)?.apiUrl ?? '');
 
-export function normaliseServer(url: string): string {
-  let u = url.trim().replace(/\/+$/, '').replace(/\/api(\/v1)?$/, '');
-  if (u && !/^https?:\/\//i.test(u)) u = `https://${u}`;
-  return u;
+export { normaliseServer } from './server';
+
+/**
+ * The Software Engineer can move every app to another server from the website
+ * (System → Mobile app server). The app follows only after the new address answers.
+ */
+async function followRemoteServer(settings: BusinessSettings, current: string, apply: (url: string) => Promise<void>) {
+  const wanted = normaliseServer(String((settings as Record<string, unknown>).mobile_api_url ?? ''));
+  const source = await getMeta<'remote' | 'manual' | null>('serverSource', null);
+  if (wanted) {
+    if (wanted === current || (await getMeta<string | null>('serverRejected', null)) === wanted) return;
+    if (await checkServer(wanted)) {
+      await apply(wanted);
+      await setMeta('serverSource', 'remote');
+    } else {
+      await setMeta('serverRejected', wanted); // try again only when the engineer saves another address
+    }
+  } else if (source === 'remote' && current !== DEFAULT_API_URL) {
+    await apply(''); // the engineer cleared it: back to the address built into the app
+    await setMeta('serverSource', null);
+  }
 }
 
 function applyLocale(user: User | null, pref: 'en' | 'sw' | null) {
@@ -192,8 +210,15 @@ export const useSession = create<SessionState>((set, get) => {
         getMeta<BusinessSettings>('settings', {}),
       ]);
       const apiUrl = server || DEFAULT_API_URL;
-      runtime.set({ apiUrl, installationId });
+      runtime.set({ apiUrl, installationId, locale: prefs.locale ?? deviceLocale() });
       setCurrency(settings.currency);
+      // For the "Mobile app users" report, and to follow a server move by the engineer
+      // (both in the background, never holding up the start).
+      reportInstall('open').catch(() => undefined);
+      api
+        .get<BusinessSettings>('public/settings', undefined, { auth: false, timeoutMs: 8000 })
+        .then((res) => followRemoteServer(res.data, get().apiUrl, (url) => get().setServer(url, 'remote')))
+        .catch(() => undefined);
       runtime.onUnauthorized(() => {
         if (get().status !== 'ready') return;
         runtime.set({ token: null });
@@ -216,9 +241,11 @@ export const useSession = create<SessionState>((set, get) => {
       emit('signedIn');
     },
 
-    async setServer(url) {
+    async setServer(url, source = 'manual') {
       const apiUrl = normaliseServer(url);
       await secure.saveServer(apiUrl || null);
+      await setMeta('serverSource', apiUrl ? source : null);
+      await setMeta('serverRejected', null);
       runtime.set({ apiUrl: apiUrl || DEFAULT_API_URL });
       set({ apiUrl: apiUrl || DEFAULT_API_URL });
     },
@@ -239,6 +266,9 @@ export const useSession = create<SessionState>((set, get) => {
           { auth: false, timeoutMs: 15000 },
         );
       } catch (e) {
+        if (e instanceof ApiError && !e.offline && !background && [401, 403, 422, 423].includes(e.status)) {
+          reportInstall('login_failed', login).catch(() => undefined);
+        }
         if (!(e instanceof ApiError) || !e.offline || background) throw e;
         // The phone has a network but the server did not answer: the offline copy still works.
         const saved = await secure.checkOfflineLogin(login, password);
@@ -252,7 +282,7 @@ export const useSession = create<SessionState>((set, get) => {
             ? t('No internet. The first sign-in on this phone needs internet; after that you can sign in without it.')
             : e.code === 'TIMEOUT'
               ? t('The PatoPro server took too long to answer. Check the internet (data bundle / Wi-Fi) and try again.')
-              : t('Cannot reach the PatoPro server ({server}). Check that the phone has internet (data bundle / Wi-Fi) and try again.', { server: get().apiUrl.replace(/^https?:\/\//, '') }),
+              : t('Cannot reach the PatoPro server. Check that the phone has internet (data bundle / Wi-Fi) and try again.'),
           0,
           noInternet ? 'OFFLINE_FIRST' : 'SERVER_UNREACHABLE',
           null,

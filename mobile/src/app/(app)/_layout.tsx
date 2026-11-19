@@ -6,6 +6,7 @@ import { useLock, watchAppLock } from '@/lib/lock';
 import { useColors } from '@/ui';
 import { LockScreen } from '@/features/LockScreen';
 import { UpdateNotice } from '@/features/AppUpdate';
+import { VoiceButton } from '@/voice/VoicePanel';
 
 export default function AppLayout() {
   const c = useColors();
@@ -38,6 +39,7 @@ export default function AppLayout() {
         <Stack.Screen name="scan" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
       </Stack>
       <UpdateNotice />
+      {!locked ? <VoiceButton /> : null}
       {locked ? <LockScreen /> : null}
     </>
   );

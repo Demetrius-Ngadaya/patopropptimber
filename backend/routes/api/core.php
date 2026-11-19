@@ -58,6 +58,8 @@ Route::crud('login-slides', LoginSlideController::class, 'login_slides', ['index
 Route::prefix('system')->name('system.')->middleware('developer')->group(function () {
     Route::get('/modules', [SystemModuleController::class, 'index'])->name('modules.index');
     Route::put('/modules', [SystemModuleController::class, 'update'])->name('modules.update');
+    Route::get('/mobile', [SystemModuleController::class, 'mobile'])->name('mobile.show');
+    Route::put('/mobile', [SystemModuleController::class, 'updateMobile'])->name('mobile.update');
 });
 
 // The bell. Every staff member; what each one sees depends on their permissions and branch.

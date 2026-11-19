@@ -3,7 +3,7 @@
     "name": "PatoPro",
     "slug": "patopro",
     "scheme": "patopro",
-    "version": "1.0.2",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -62,12 +62,12 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/splash-icon.png",
+          "image": "./assets/splash-blank.png",
           "imageWidth": 140,
           "resizeMode": "contain",
           "backgroundColor": "#F5F7FB",
           "dark": {
-            "image": "./assets/splash-icon.png",
+            "image": "./assets/splash-blank.png",
             "backgroundColor": "#0B1220"
           }
         }
@@ -104,7 +104,8 @@
             "extraProguardRules": "-keep class androidx.work.** { *; }\n-keep class * extends androidx.room.RoomDatabase { <init>(...); }\n-keep class androidx.room.** { *; }"
           }
         }
-      ]
+      ],
+      "expo-speech-recognition"
     ],
     "experiments": {
       "typedRoutes": true
