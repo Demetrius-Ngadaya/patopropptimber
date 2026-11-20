@@ -3,7 +3,7 @@
     "name": "PatoPro",
     "slug": "patopro",
     "scheme": "patopro",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -40,9 +40,7 @@
         "android.permission.USE_BIOMETRIC",
         "android.permission.USE_FINGERPRINT",
         "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.WAKE_LOCK"
-      ],
-      "blockedPermissions": [
+        "android.permission.WAKE_LOCK",
         "android.permission.RECORD_AUDIO"
       ],
       "predictiveBackGestureEnabled": false
@@ -105,7 +103,16 @@
           }
         }
       ],
-      "expo-speech-recognition"
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "PatoPro uses the microphone for voice mode.",
+          "speechRecognitionPermission": "PatoPro uses speech recognition for voice mode.",
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox"
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
