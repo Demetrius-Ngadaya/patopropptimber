@@ -10,7 +10,7 @@
 #      (e.g. api-dablos.shezoni.com), each with SSL (Let's Encrypt).
 #   2. Create a MySQL database + user for the business (MySQL Management).
 #
-# Usage (on the server, from any PatoPro folder, e.g. ~/patopro):
+# Usage (on the server, from any PatoPro folder, e.g. ~/patopro or a plain copy ~/patopro-base):
 #   ./new-business.sh dablos
 # It asks for the addresses, database and first admin, then prepares everything.
 set -euo pipefail
@@ -128,15 +128,18 @@ cd "$DEST"
 ./deploy.sh frontend >/dev/null
 
 echo "==> Scheduled jobs (reports, reminders, backups) every minute"
+# The selector-aware "php" (CloudLinux): cron then always uses the version chosen in
+# DirectAdmin → Select PHP version, so upgrading PHP there upgrades the jobs too.
 PHPBIN="$(command -v "$PHP")"
-[[ -x /opt/alt/php84/usr/bin/php ]] && PHPBIN=/opt/alt/php84/usr/bin/php
+[[ -x /usr/local/bin/php ]] && PHPBIN=/usr/local/bin/php
 LINE="* * * * * cd $DEST/backend && $PHPBIN artisan schedule:run >> $DEST/backend/storage/logs/cron.log 2>&1"
 ( crontab -l 2>/dev/null | grep -vF "cd $DEST/backend && " ; echo "$LINE" ) | crontab -
 
 echo "==> Adding $NAME to the list for ./update-all.sh"
 touch "$HOME/.patopro-sites"
 grep -qxF "$DEST" "$HOME/.patopro-sites" || echo "$DEST" >> "$HOME/.patopro-sites"
-grep -qxF "$SRC" "$HOME/.patopro-sites" || echo "$SRC" >> "$HOME/.patopro-sites"
+# The copy this was run from is a business too only if it has its own settings.
+[[ -f "$SRC/backend/.env" ]] && { grep -qxF "$SRC" "$HOME/.patopro-sites" || echo "$SRC" >> "$HOME/.patopro-sites"; }
 
 echo "==> Checking the API"
 sleep 1
