@@ -49,7 +49,7 @@ export default function SystemMobilePage() {
       {!data.data ? <Spinner /> : (
         <Panel title={t("Server address the app uses")} actions={<span className="inline-flex items-center gap-1 text-xs text-ink-500"><Lock className="size-3.5" />{t("Software Engineer")}</span>}>
           <div className="max-w-xl space-y-4">
-            <Field label={t("Address")} hint={t("Example: https://api.pptimber.co.tz — leave empty to use the address built into the app.")}>
+            <Field label={t("Address")} hint={t("Example: https://api.yourbusiness.co.tz — leave empty to use the address built into the app.")}>
               {(p) => <Input {...p} value={url} onChange={(e) => { setUrl(e.target.value); setTest(null); }} placeholder="https://api.example.co.tz" inputMode="url" />}
             </Field>
             {test && <p className={test.ok ? "text-sm text-brand-700" : "text-sm text-ember-700"}>{test.text}</p>}

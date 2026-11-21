@@ -104,7 +104,7 @@ export default function AppDownloadPage() {
               <ol className="mt-3 space-y-3 text-sm text-ink-700">
                 {(device === "ios"
                   ? [
-                      t("Open pptimber.co.tz in Safari (not Chrome)."),
+                      t("Open {site} in Safari (not Chrome).", { site: pageUrl ? new URL(pageUrl).host : t("this website") }),
                       t("Tap the Share button (the square with an arrow) at the bottom."),
                       t("Choose “Add to Home Screen”, then “Add”."),
                       t("Open PatoPro from the new icon and sign in. It opens full-screen like an app."),
