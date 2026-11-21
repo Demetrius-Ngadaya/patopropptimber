@@ -33,3 +33,21 @@ listed in `~/.patopro-sites`. One business can also be updated alone with
 `cd ~/dablos && ./deploy.sh`.
 
 Never edit code on the server; only the `.env` files there.
+
+## Business codes (mobile app)
+
+One app serves every business. At sign-in the person types their **business code**
+(e.g. `dablos`); the app looks it up in
+`https://shezoni.com/patopro/directory.json` and from then on talks to that
+business's server. The code is remembered; switching to another code wipes the
+previous business's data from the phone (and refuses while sales are still unsent).
+
+Manage the list on the shezoni.com server:
+
+    ~/patopro-base/directory.sh list
+    ~/patopro-base/directory.sh add dablos "Dablos" https://api-dablos.shezoni.com
+    ~/patopro-base/directory.sh add pptimber "PP Timber" https://api.pptimber.co.tz
+    ~/patopro-base/directory.sh remove dablos
+
+`new-business.sh` adds each new business by itself. Leaving the code empty uses the
+server built into the app (PP Timber).

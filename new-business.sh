@@ -143,7 +143,18 @@ grep -qxF "$DEST" "$HOME/.patopro-sites" || echo "$DEST" >> "$HOME/.patopro-site
 
 echo "==> Checking the API"
 sleep 1
-curl -fsS "https://$API_DOMAIN/api/v1/health" && echo || echo "   (The API did not answer yet: check the SSL certificate of $API_DOMAIN.)"
+API_OK=0
+curl -fsS "https://$API_DOMAIN/api/v1/health" && { echo; API_OK=1; } || echo "   (The API did not answer yet: check the SSL certificate of $API_DOMAIN.)"
+
+# The business code staff and customers type in the mobile app (list on shezoni.com).
+if [[ -d "$HOME/domains/shezoni.com/public_html" ]]; then
+  if [[ "$API_OK" == 1 ]]; then
+    TITLE="$(ask "Business name shown in the app" "${NAME^}")"
+    "$DEST/directory.sh" add "$NAME" "$TITLE" "https://$API_DOMAIN" || true
+  else
+    echo "   Later, when the API answers, add the app code:  $DEST/directory.sh add $NAME \"${NAME^}\" https://$API_DOMAIN"
+  fi
+fi
 
 cat <<EOF
 
@@ -154,6 +165,8 @@ cat <<EOF
       Application URL:        $WEB_DOMAIN
       Application startup file: app.js
     Press CREATE, then RESTART. Open https://$WEB_DOMAIN and sign in as  admin.
+
+    Mobile app: staff and customers type the business code  $NAME  at sign-in.
 
     Then, as the Software Engineer, create your hidden account for this business:
       cd $DEST/backend && $PHP artisan mauzo:create-developer <your-username>

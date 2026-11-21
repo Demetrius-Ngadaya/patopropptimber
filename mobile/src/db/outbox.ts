@@ -181,3 +181,10 @@ export async function pruneDone(): Promise<void> {
   await db.runAsync("DELETE FROM outbox WHERE status = 'done' AND done_at < ?", weekAgo);
   await db.runAsync('DELETE FROM sync_log WHERE id NOT IN (SELECT id FROM sync_log ORDER BY id DESC LIMIT 100)');
 }
+
+/** Changes on this phone not yet on the server, for anyone (before switching business). */
+export async function unsentTotal(): Promise<number> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<{ n: number }>(`SELECT COUNT(*) AS n FROM outbox WHERE status != 'done'`);
+  return Number(row?.n ?? 0);
+}

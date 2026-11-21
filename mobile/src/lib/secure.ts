@@ -58,6 +58,8 @@ export type OfflineLogin = {
   branchId: number | null;
   /** Last time the server checked this password: offline sign-in works for 30 days after it. */
   verifiedAt: string;
+  /** The business server it belongs to (a saved sign-in never opens another business). */
+  server?: string;
 };
 
 export const OFFLINE_LOGIN_DAYS = 30;
@@ -87,10 +89,10 @@ export const secure = {
   },
 
   /** After a sign-in the server accepted: remember it for signing in offline later. */
-  async rememberOfflineLogin(typed: string, password: string, user: import('./types').User, branchId: number | null): Promise<void> {
+  async rememberOfflineLogin(typed: string, password: string, user: import('./types').User, branchId: number | null, server?: string): Promise<void> {
     const salt = Crypto.randomUUID();
     const identifiers = [...new Set([typed, user.username, user.email, user.phone].map(clean).filter(Boolean))];
-    const record: OfflineLogin = { identifiers, salt, hash: await passwordHash(salt, password), user, branchId, verifiedAt: new Date().toISOString() };
+    const record: OfflineLogin = { identifiers, salt, hash: await passwordHash(salt, password), user, branchId, verifiedAt: new Date().toISOString(), server };
     await set(KEYS.offline, JSON.stringify(record));
   },
   async offlineLogin(): Promise<OfflineLogin | null> {
@@ -106,9 +108,10 @@ export const secure = {
    * 'ok' with the saved person, 'unknown' when this phone has no saved sign-in for
    * that name (or it is too old), 'wrong' when the password does not match.
    */
-  async checkOfflineLogin(typed: string, password: string): Promise<{ result: 'ok'; login: OfflineLogin } | { result: 'unknown' | 'wrong' | 'stale' }> {
+  async checkOfflineLogin(typed: string, password: string, server?: string): Promise<{ result: 'ok'; login: OfflineLogin } | { result: 'unknown' | 'wrong' | 'stale' }> {
     const login = await secure.offlineLogin();
     if (!login || !login.identifiers.includes(clean(typed))) return { result: 'unknown' };
+    if (server && login.server && login.server !== server) return { result: 'unknown' };
     if (Date.now() - new Date(login.verifiedAt).getTime() > OFFLINE_LOGIN_DAYS * 86400_000) return { result: 'stale' };
     return (await passwordHash(login.salt, password)) === login.hash ? { result: 'ok', login } : { result: 'wrong' };
   },

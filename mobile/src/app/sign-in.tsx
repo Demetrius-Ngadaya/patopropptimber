@@ -14,7 +14,9 @@ import { Button, Card, Input, Sheet, Text, radius, space, useColors } from '@/ui
 export default function SignIn() {
   const t = useT();
   const c = useColors();
-  const { status, apiUrl, expired, login, verifyTwoFactor } = useSession();
+  const { status, apiUrl, expired, login, verifyTwoFactor, business, chooseBusiness } = useSession();
+  // The business code (one app for every business); remembered after the first sign-in.
+  const [businessCode, setBusinessCode] = useState(business?.code ?? '');
   const locale = useLocale((s) => s.locale);
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -35,7 +37,7 @@ export default function SignIn() {
   // no internet on the phone, or the server not answering.
   const explain = (e: unknown) => {
     if (e instanceof ApiError) {
-      if (['OFFLINE_FIRST', 'OFFLINE_STALE', 'OFFLINE_WRONG', 'SERVER_UNREACHABLE'].includes(e.code ?? '')) return e.message;
+      if (['OFFLINE_FIRST', 'OFFLINE_STALE', 'OFFLINE_WRONG', 'SERVER_UNREACHABLE', 'BUSINESS_NOT_FOUND', 'UNSENT_CHANGES'].includes(e.code ?? '')) return e.message;
       if (e.status === 429) return e.firstError || t('Too many attempts. Wait a minute and try again.');
       if (e.offline) return t('Cannot reach the PatoPro server. Check that the phone has internet (data bundle / Wi-Fi) and try again.');
       return e.firstError;
@@ -77,7 +79,10 @@ export default function SignIn() {
     setBusy(true);
     try {
       if (twoFactor) await verifyTwoFactor(code.trim());
-      else await login(identifier.trim(), password);
+      else {
+        await chooseBusiness(businessCode);
+        await login(identifier.trim(), password);
+      }
     } catch (e) {
       setError(explain(e));
     } finally {
@@ -143,6 +148,16 @@ export default function SignIn() {
             ) : (
               <>
                 <Input
+                  label={t('Business code')}
+                  hint={business && businessCode.trim().toLowerCase() === business.code ? business.name : t('The code your business was given, e.g. dablos')}
+                  value={businessCode}
+                  onChangeText={setBusinessCode}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  icon="business-outline"
+                  returnKeyType="next"
+                />
+                <Input
                   label={t('Username, email or phone')}
                   value={identifier}
                   onChangeText={setIdentifier}
@@ -198,7 +213,21 @@ export default function SignIn() {
               <View style={{ flex: 1 }}>
                 <Text variant="bodyStrong">{t('Shopping with us?')}</Text>
               </View>
-              <Button title={t('Create account')} size="sm" variant="secondary" onPress={() => router.push('/register')} />
+              <Button
+                title={t('Create account')}
+                size="sm"
+                variant="secondary"
+                onPress={async () => {
+                  // The account is created in the business whose code is typed above.
+                  setError(null);
+                  try {
+                    await chooseBusiness(businessCode);
+                    router.push('/register');
+                  } catch (e) {
+                    setError(explain(e));
+                  }
+                }}
+              />
             </Card>
           ) : null}
 

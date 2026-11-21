@@ -602,4 +602,11 @@ export const SW: Record<string, string> = {
   "Voice mode: tap and speak": "Hali ya sauti: gusa kisha ongea",
   "What can I say?": "Naweza kusema nini?",
   "Working on it…": "Inashughulikia…",
+  "Business code": "Msimbo wa biashara",
+  "Business code \"{code}\" was not found. Check the code you were given.": "Namba ya biashara \"{code}\" haikupatikana. Kagua namba uliyopewa.",
+  "No internet. Checking a business code needs internet the first time.": "Hakuna intaneti. Kukagua msimbo wa biashara kunahitaji intaneti mara ya kwanza.",
+  "The business was found, but its system is not answering right now. Try again in a moment.": "Biashara imepatikana, lakini mfumo wake haujibu kwa sasa. Jaribu tena baada ya muda mfupi.",
+  "The code your business was given, e.g. dablos": "Msimbo uliopewa kwa biashara yako, mfano: dablos",
+  "the previous business": "biashara iliyotangulia",
+  "{n} changes on this phone are not sent yet. Sign in to {business} with internet first, so they are sent, then change the business code.": "Mabadiliko {n} kwenye simu hii bado hayajatumwa. Ingia kwanza {business} ukiwa na intaneti ili yatumwe, kisha ubadilishe msimbo wa biashara.",
 };

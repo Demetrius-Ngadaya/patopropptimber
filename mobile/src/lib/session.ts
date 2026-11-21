@@ -12,6 +12,8 @@ import { getMeta, setMeta } from '../db/meta';
 import { wipeLocalData } from '../db/database';
 import { deviceLocale, t, useLocale } from '../i18n';
 import { checkServer, normaliseServer, reportInstall } from './server';
+import { cleanCode, lookupBusiness, saveBusiness, savedBusiness, type Business } from './business';
+import { unsentTotal } from '../db/outbox';
 
 /**
  * Who is signed in, on which branch, against which server. Survives restarts
@@ -33,7 +35,10 @@ type SessionState = {
   /** Signed in on this phone without internet: the real sign-in finishes when the internet returns. */
   offline: boolean;
   boot: () => Promise<void>;
-  setServer: (url: string, source?: 'manual' | 'remote') => Promise<void>;
+  setServer: (url: string, source?: 'manual' | 'remote' | 'code') => Promise<void>;
+  /** The business code typed at sign-in: looks it up and points the app at that business. */
+  chooseBusiness: (code: string) => Promise<Business | null>;
+  business: Business | null;
   login: (login: string, password: string) => Promise<'ok' | 'two_factor'>;
   verifyTwoFactor: (code: string) => Promise<void>;
   refresh: () => Promise<void>;
@@ -109,17 +114,22 @@ export const useSession = create<SessionState>((set, get) => {
 
   const finish = async (data: LoginResult) => {
     const lastUser = await getMeta<number | null>('lastUserId', null);
-    if (lastUser !== null && lastUser !== data.user.id) {
-      // Another person on this phone: they must not see the previous user's data.
-      await wipeLocalData(true);
+    const lastServer = await getMeta<string | null>('lastServer', null);
+    const server = get().apiUrl;
+    // Another person, or another business, on this phone: they must not see the
+    // previous one's data (user numbers repeat between businesses).
+    const otherBusiness = lastServer !== null && lastServer !== server;
+    if ((lastUser !== null && lastUser !== data.user.id) || otherBusiness) {
+      await wipeLocalData(!otherBusiness);
       await secure.forgetOfflineLogin();
     }
     await setMeta('lastUserId', data.user.id);
+    await setMeta('lastServer', server);
     const branchId = data.user.branch?.id ?? data.user.branches?.[0]?.id ?? null;
     const stored: StoredSession = { token: data.token, expiresAt: data.expires_at, user: data.user, branchId };
     await secure.saveSession(stored);
     if (pending && data.user.type === 'staff') {
-      await secure.rememberOfflineLogin(pending.login, pending.password, data.user, branchId).catch(() => undefined);
+      await secure.rememberOfflineLogin(pending.login, pending.password, data.user, branchId, server).catch(() => undefined);
     }
     pending = null;
     stopWatching?.();
@@ -135,7 +145,7 @@ export const useSession = create<SessionState>((set, get) => {
 
   /** Sign in from the copy kept on this phone (no internet). */
   const signInOffline = async (login: string, password: string) => {
-    const check = await secure.checkOfflineLogin(login, password);
+    const check = await secure.checkOfflineLogin(login, password, get().apiUrl);
     if (check.result === 'unknown') {
       throw new ApiError(t('No internet. The first sign-in on this phone needs internet; after that you can sign in without it.'), 0, 'OFFLINE_FIRST', null, true);
     }
@@ -200,6 +210,7 @@ export const useSession = create<SessionState>((set, get) => {
     challenge: null,
     expired: false,
     offline: false,
+    business: null,
 
     async boot() {
       const [prefs, server, installationId, stored, settings] = await Promise.all([
@@ -211,6 +222,7 @@ export const useSession = create<SessionState>((set, get) => {
       ]);
       const apiUrl = server || DEFAULT_API_URL;
       runtime.set({ apiUrl, installationId, locale: prefs.locale ?? deviceLocale() });
+      set({ business: await savedBusiness() });
       setCurrency(settings.currency);
       // For the "Mobile app users" report, and to follow a server move by the engineer
       // (both in the background, never holding up the start).
@@ -246,8 +258,46 @@ export const useSession = create<SessionState>((set, get) => {
       await secure.saveServer(apiUrl || null);
       await setMeta('serverSource', apiUrl ? source : null);
       await setMeta('serverRejected', null);
+      // The same business moved to another address (engineer or system): its data on
+      // this phone stays. Only choosing another business code counts as a new business.
+      if (source !== 'code' && (await getMeta<string | null>('lastServer', null)) !== null) await setMeta('lastServer', apiUrl || DEFAULT_API_URL);
+      if (source === 'manual') {
+        await saveBusiness(null); // an address typed by the engineer replaces the business code
+        set({ business: null });
+      }
       runtime.set({ apiUrl: apiUrl || DEFAULT_API_URL });
       set({ apiUrl: apiUrl || DEFAULT_API_URL });
+    },
+
+    async chooseBusiness(code) {
+      const wanted = cleanCode(code);
+      const current = get().business;
+      if (wanted === (current?.code ?? '')) return current;
+      // Switching business: unsent sales of the other business would be lost.
+      const unsent = await unsentTotal().catch(() => 0);
+      if (unsent > 0) {
+        throw new ApiError(t('{n} changes on this phone are not sent yet. Sign in to {business} with internet first, so they are sent, then change the business code.', { n: unsent, business: current?.name ?? t('the previous business') }), 0, 'UNSENT_CHANGES');
+      }
+      if (!wanted) {
+        await get().setServer('', 'code');
+        await saveBusiness(null);
+        set({ business: null });
+        return null;
+      }
+      const found = await lookupBusiness(wanted);
+      if (!found.ok) {
+        const message =
+          found.reason === 'not_found'
+            ? t('Business code "{code}" was not found. Check the code you were given.', { code: wanted })
+            : found.reason === 'server_down'
+              ? t('The business was found, but its system is not answering right now. Try again in a moment.')
+              : t('No internet. Checking a business code needs internet the first time.');
+        throw new ApiError(message, found.reason === 'not_found' ? 404 : 0, found.reason === 'not_found' ? 'BUSINESS_NOT_FOUND' : 'SERVER_UNREACHABLE', null, found.reason !== 'not_found');
+      }
+      await get().setServer(found.business.api, 'code');
+      await saveBusiness(found.business);
+      set({ business: found.business });
+      return found.business;
     },
 
     async login(login, password) {
@@ -271,7 +321,7 @@ export const useSession = create<SessionState>((set, get) => {
         }
         if (!(e instanceof ApiError) || !e.offline || background) throw e;
         // The phone has a network but the server did not answer: the offline copy still works.
-        const saved = await secure.checkOfflineLogin(login, password);
+        const saved = await secure.checkOfflineLogin(login, password, get().apiUrl);
         if (saved.result === 'ok' || saved.result === 'wrong') {
           await signInOffline(login, password);
           return 'ok';
