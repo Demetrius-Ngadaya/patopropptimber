@@ -1,0 +1,3 @@
+module.exports=[84822,a=>{"use strict";var b=a.i(87924),c=a.i(26314),d=a.i(22720);a.i(11909);var e=a.i(2340);a.i(85649);var f=a.i(79529);a.s(["L",0,function({perm:a,children:c}){let{can:e}=(0,d.F)();return e(a)?(0,b.jsx)(b.Fragment,{children:c}):null},"g",0,function({perm:a,children:g}){let h=(0,f.G)(),{can:i}=(0,d.F)();return i(a)?(0,b.jsx)(b.Fragment,{children:g}):(0,b.jsx)(e.k,{icon:(0,b.jsx)(c.f,{className:"size-10"}),title:h("You don't have access to this page"),message:h("Ask an administrator to give your role access if you need it.")})}])}];
+
+//# sourceMappingURL=src_components_layout_Guard_tsx_04_hkst-lnvt_._.js.map

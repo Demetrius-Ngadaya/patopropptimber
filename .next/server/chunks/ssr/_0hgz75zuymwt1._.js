@@ -1,0 +1,3 @@
+(()=>{"use strict";module.exports=[19107,a=>{var b=a.i(64831);let c={name:"arrow-left",size:24,node:[["path",{d:"m12 19-7-7 7-7",key:"1l729n"}],["path",{d:"M19 12H5",key:"x3x0zl"}]]};c.node;let d=(0,b.f)(c);a.s(["f",0,d],19107)},55705,a=>{var b=a.i(62800);a.s(["R",0,{cash:"Cash",mobile_money:"Mobile money",lipa_namba:"Lipa namba",online:"Pay by phone (push)",bank:"Bank",card:"Card",cheque:"Cheque",credit_note:"Credit note",savings:"Customer savings"},"b",0,function(a){let c=(0,b.B)("admin/lookups",{include:a.join(",")});return c.data?.data??{}}])}]})();
+
+//# sourceMappingURL=_0hgz75zuymwt1._.js.map

@@ -1,0 +1,3 @@
+module.exports=[94594,a=>{"use strict";var b=a.i(87924),c=a.i(72131),d=a.i(62800);a.i(85649);var e=a.i(79529),f=a.i(84822);a.i(11909);var g=a.i(2340),h=a.i(34707);a.s(["default",0,function({params:a}){let i=(0,e.G)(),{id:j}=(0,c.use)(a),k=(0,d.B)(`admin/promotions/${j}`,void 0,{keepPrevious:!1});return k.isLoading?(0,b.jsx)(g.E,{variant:"page"}):k.error||!k.data?(0,b.jsx)(g.D,{message:k.error?.message??i("Not found."),onRetry:()=>k.refetch()}):(0,b.jsx)(f.g,{perm:"marketing.manage",children:(0,b.jsx)(h.f,{existing:k.data.data})})}])}];
+
+//# sourceMappingURL=src_app_admin_promotions_%5Bid%5D_edit_page_tsx_0p4by0x6vsqf3._.js.map
