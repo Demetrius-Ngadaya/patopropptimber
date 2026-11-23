@@ -3340,4 +3340,5 @@ export const sw: Record<string, string> = {
   "Wrong password or account": "Nenosiri au akaunti si sahihi",
   "{count} on the newest version": "{count} kwenye toleo jipya zaidi",
   "{staff} staff · {customers} customers": "Wafanyakazi {staff} · wateja {customers}",
+  "The system is answering slowly right now. Your internet is fine — please wait a moment after each action.": "Mfumo unajibu polepole kwa sasa. Intaneti yako iko sawa — tafadhali subiri kidogo baada ya kila kitendo.",
 };
