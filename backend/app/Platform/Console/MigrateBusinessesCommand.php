@@ -3,6 +3,7 @@
 namespace App\Platform\Console;
 
 use App\Platform\Models\Business;
+use App\Platform\Provisioning\BusinessProvisioner;
 use App\Platform\Support\BusinessManager;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
@@ -46,6 +47,17 @@ class MigrateBusinessesCommand extends Command
                         Artisan::call('db:seed', ['--force' => true], $this->output);
                     }
                 });
+            } catch (Throwable $e) {
+                $failed++;
+                $this->error("  failed: {$e->getMessage()}");
+            }
+        }
+
+        // Keep the template that new businesses are copied from up to date.
+        if (! $this->option('business') && app(BusinessProvisioner::class)->exists(BusinessProvisioner::templateName())) {
+            $this->info('template ('.BusinessProvisioner::templateName().')');
+            try {
+                app(BusinessProvisioner::class)->refreshTemplate();
             } catch (Throwable $e) {
                 $failed++;
                 $this->error("  failed: {$e->getMessage()}");

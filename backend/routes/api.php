@@ -20,6 +20,11 @@ Route::get('/health', fn () => response()->json(['success' => true, 'status' => 
 // Which business this is and what its package allows (single mode: always everything).
 Route::get('/business', [BusinessController::class, 'show'])->middleware('throttle:public')->name('business');
 
+// The platform's own pages: packages and sign-up (patopro.shezoni.com only).
+if (config('patopro.mode') === 'platform') {
+    require __DIR__.'/api/platform.php';
+}
+
 require __DIR__.'/api/auth.php';
 Route::middleware('feature:online_shop')->group(function () {
     require __DIR__.'/api/shop.php';

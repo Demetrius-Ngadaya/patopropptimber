@@ -9,6 +9,8 @@ use App\Platform\Console\CreateBusinessCommand;
 use App\Platform\Console\InstallPlatformCommand;
 use App\Platform\Console\ListBusinessesCommand;
 use App\Platform\Console\MigrateBusinessesCommand;
+use App\Platform\Console\ProvisionPendingCommand;
+use App\Platform\Console\RefreshTemplateCommand;
 use App\Platform\Console\RunForBusinessesCommand;
 use App\Platform\Support\BusinessManager;
 use Illuminate\Support\ServiceProvider;
@@ -47,6 +49,8 @@ class PlatformServiceProvider extends ServiceProvider
                 ListBusinessesCommand::class,
                 MigrateBusinessesCommand::class,
                 RunForBusinessesCommand::class,
+                RefreshTemplateCommand::class,
+                ProvisionPendingCommand::class,
             ]);
             $this->chooseBusinessForCommand();
         }

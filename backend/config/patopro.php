@@ -65,6 +65,34 @@ return [
             'download', 'install', 'manifest', 'robots', 'sitemap', 'favicon', 'sw', 'offline',
         ],
 
+        /*
+        | How a new business gets its database.
+        | directadmin – through the DirectAdmin API with a login key (shared hosting)
+        | mysql       – CREATE DATABASE + GRANT on the central connection (a VPS with a privileged user)
+        | none        – the database already exists (created by hand)
+        */
+        'provisioning' => [
+            'driver' => env('PLATFORM_DB_PROVISIONER', 'directadmin'),
+            'directadmin' => [
+                'url' => rtrim((string) env('DIRECTADMIN_URL', ''), '/'),   // https://server30.example.com:2222
+                'username' => env('DIRECTADMIN_USERNAME'),                  // the DirectAdmin account, e.g. shezonic
+                'login_key' => env('DIRECTADMIN_LOGIN_KEY'),                // Login Keys: allow CMD_API_DATABASES only
+                'verify_ssl' => (bool) env('DIRECTADMIN_VERIFY_SSL', true),
+            ],
+            // A ready-made business database that new businesses are copied from (seconds instead of minutes).
+            'template' => env('PLATFORM_TEMPLATE_DB', 'template'),       // name after the prefix
+        ],
+
+        'signup' => [
+            'enabled' => (bool) env('PLATFORM_SIGNUP_ENABLED', true),
+            'code_minutes' => 10,          // an SMS code is valid this long
+            'max_codes' => 3,              // codes sent per sign-up
+            'resend_seconds' => 60,        // wait before sending another
+            'max_attempts' => 5,           // wrong codes before the sign-up must start again
+            'per_phone_per_day' => 5,      // sign-ups started from one phone in a day
+            'businesses_per_phone' => 3,   // businesses one phone can own
+        ],
+
         // What happens around the end of a paid period (all in days).
         'subscription' => [
             'trial_days' => (int) env('PLATFORM_TRIAL_DAYS', 14),

@@ -25,6 +25,7 @@ class Plan extends Model
         'price_yearly' => 'decimal:2',
         'is_active' => 'boolean',
         'is_public' => 'boolean',
+        'is_recommended' => 'boolean',
         'trial_days' => 'integer',
         'sort_order' => 'integer',
     ];
@@ -37,6 +38,25 @@ class Plan extends Model
     public function businesses(): HasMany
     {
         return $this->hasMany(Business::class);
+    }
+
+    /** For the pricing and sign-up pages. */
+    public function toPublicArray(): array
+    {
+        $access = \App\Platform\Support\PlanAccess::fromPlan($this)->toArray();
+
+        return [
+            'code' => $this->code,
+            'name' => $this->name,
+            'description' => $this->description,
+            'price_monthly' => (float) $this->price_monthly,
+            'price_yearly' => (float) $this->price_yearly,
+            'currency' => $this->currency,
+            'trial_days' => $this->trialDays(),
+            'recommended' => $this->is_recommended,
+            'features' => $access['features'],
+            'limits' => $access['limits'],
+        ];
     }
 
     public function trialDays(): int

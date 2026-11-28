@@ -10,6 +10,18 @@ use Illuminate\Support\Facades\Schedule;
 |   * * * * * cd /path/to/backend && php artisan schedule:run >> /dev/null 2>&1
 */
 
+/*
+| Platform mode (patopro.shezoni.com), cron without a business: only the platform's
+| own tasks run here, and each business's tasks below run in a process of its own
+| (platform:run sets PATOPRO_BUSINESS for it).
+*/
+if (config('patopro.mode') === 'platform' && ! business()->onPlatform()) {
+    Schedule::command('platform:provision')->everyMinute()->withoutOverlapping();
+    Schedule::command('platform:run schedule:run')->everyMinute();
+
+    return;
+}
+
 // Sales / credit / expense reports: bell + SMS / WhatsApp / email as chosen (23:00 so the day is almost complete)
 Schedule::command('mauzo:send-report daily')->dailyAt('23:00')->withoutOverlapping();
 Schedule::command('mauzo:send-report weekly')->weeklyOn(0, '23:05')->withoutOverlapping();

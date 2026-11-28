@@ -14,7 +14,7 @@ Code never checks the mode. It asks:
 
 Platform-only code lives in `backend/app/Platform/` and `backend/database/migrations/platform/`.
 
-## Step 1 (this release)
+## Step 1
 
 - **Central tables:** `platform_plans` (packages) and `platform_businesses` (address, owner, package, database, trial/paid dates).
 - **Business switch:** every API request on the platform carries `X-Business: <slug>` (or `?business=<slug>` for gateway callbacks). The API then uses that business's database, cache folder and file folders.
@@ -24,13 +24,34 @@ Platform-only code lives in `backend/app/Platform/` and `backend/database/migrat
 - **Single mode:** the same limits can be set in `.env` (`PATOPRO_FEATURES`, `PATOPRO_LIMIT_*`). By default everything is allowed with no limits, so existing installs do not change.
 - **New endpoint:** `GET /api/v1/business` – the business, its state and its package (for banners and menus).
 
-Not yet: sign-up page, payments, SMS warnings, website path routing (`/<business>/…`), mobile phone sign-in directory. These come in the next steps.
+## Step 2 (this release): sign-up, backend
+
+- **Packages:** Starter 10,000 · Msingi 15,000 · **Biashara 35,000 (most popular)** · Professional 55,000 · Premium 75,000 TSh a month (a year = 10 months). All have a 14-day free trial.
+- **Sign-up API (`/api/v1/platform/…`):**
+  - `GET plans`
+  - `POST signup/check-address`
+  - `POST signup` (sends an SMS code)
+  - `POST signup/{id}/resend`
+  - `POST signup/{id}/verify`
+  - `GET signup/{id}`
+- **Setting up a new business:**
+  1. The database is created through the DirectAdmin API.
+  2. It is filled by copying the **template database**, which takes seconds.
+  3. The owner becomes the administrator.
+  4. A welcome SMS is sent.
+  If the setup is slow or fails, `platform:provision` (every minute) finishes it.
+- **Owners sign in with their phone number,** typed any common way (0712…, 255712…, +255…). This works on single installs too.
+- **One cron line:** it runs the platform's own tasks, then each business's tasks in a separate process.
+
+Not yet: the website pages (pricing, sign-up), website addresses `/<business>/…`, payments and SMS reminders, and mobile phone sign-in. These come next.
 
 ## Commands (platform mode)
 
 ```bash
 php artisan platform:install                      # central tables + example packages (edit their prices!)
 php artisan platform:business:create duka-la-juma "Duka la Juma" --plan=biashara --owner="Juma Mussa" --phone=0712345678
+php artisan platform:template                     # create/refresh the template new businesses are copied from
+php artisan platform:provision                    # finish setups that did not complete (the scheduler runs it)
 php artisan platform:list                         # businesses, package, state, end date
 php artisan platform:migrate                      # central + every business (deploy.sh runs this)
 php artisan platform:run schedule:run             # scheduled tasks for every business (the one cron line)
@@ -44,12 +65,12 @@ Run the same create command again if a setup failed (for example the database di
 
 1. **In DirectAdmin → MySQL**, create:
    - the central database and its user;
-   - one "business" user that will be granted every business database.
-   Each new business database is created in DirectAdmin and granted to that user. The next step automates this through the DirectAdmin API.
-2. **Copy the code:** `git clone … ~/platform`. In `backend/.env`, set `PATOPRO_MODE=platform`, the `PLATFORM_*` lines (see `.env.example`), and `DB_DATABASE` = the central database.
-3. **Install:** `php artisan platform:install`.
-4. **Cron:** one line for the whole platform:
-   `* * * * * cd /home/shezonic/platform/backend && /home/shezonic/bin/php artisan platform:run schedule:run >> storage/logs/cron.log 2>&1`
+   - one "business" database (for example `shezonic_ppbiz`) with its user. That user is then given every business database.
+2. **In DirectAdmin → Login Keys**, create a key that allows only `CMD_API_DATABASES`. Put it in `DIRECTADMIN_LOGIN_KEY`.
+3. **Copy the code:** `git clone … ~/platform`. In `backend/.env`, set `PATOPRO_MODE=platform`, the `PLATFORM_*` lines (see `.env.example`), and `DB_DATABASE` = the central database.
+4. **Install:** `php artisan platform:install`, then `php artisan platform:template`.
+5. **Cron:** one line for the whole platform. `PHP_BINARY` makes the tasks it starts use the same PHP:
+   `* * * * * cd /home/shezonic/platform/backend && PHP_BINARY=/home/shezonic/bin/php /home/shezonic/bin/php artisan schedule:run >> storage/logs/cron.log 2>&1`
 
 ## Tests
 

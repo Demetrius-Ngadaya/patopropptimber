@@ -4,79 +4,25 @@ namespace Tests\Feature\Platform;
 
 use App\Exceptions\BusinessException;
 use App\Models\Core\Branch;
-use App\Platform\Console\InstallPlatformCommand;
 use App\Platform\Models\Business;
-use App\Platform\Models\Plan;
 use App\Platform\Support\BusinessManager;
-use App\Services\Core\SettingsService;
 use App\Support\Modules;
-use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
-use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\File;
 
 /**
  * Many businesses in one app: each request reaches only its own database,
  * and packages and subscription states are enforced. Uses SQLite files, one per business.
  */
-class PlatformModeTest extends BaseTestCase
+class PlatformModeTest extends PlatformTestCase
 {
-    private string $dir;
-
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->dir = sys_get_temp_dir().'/patopro-platform-'.uniqid();
-        File::ensureDirectoryExists($this->dir);
-        touch($this->dir.'/central.sqlite');
-
-        config([
-            'patopro.mode' => 'platform',
-            'database.default' => 'sqlite',
-            'database.connections.sqlite.database' => ':memory:',
-            'database.connections.platform' => ['driver' => 'sqlite', 'database' => $this->dir.'/central.sqlite', 'prefix' => '', 'foreign_key_constraints' => true],
-            'cache.default' => 'array',
-        ]);
-        DB::purge('sqlite');
-        $this->app->forgetInstance(BusinessManager::class);
-
-        Artisan::call('migrate', ['--database' => 'platform', '--path' => 'database/migrations/platform', '--force' => true]);
-        foreach (InstallPlatformCommand::examplePlans() as $plan) {
-            Plan::query()->create($plan);
-        }
-
         $this->business('duka-a', 'Duka A', 'msingi', ['trial_ends_at' => now()->addDays(14)]);
-        $this->business('duka-b', 'Duka B', 'pro', ['paid_until' => now()->addMonth()]);
+        $this->business('duka-b', 'Duka B', 'premium', ['paid_until' => now()->addMonth()]);
         $this->business('duka-c', 'Duka C', 'msingi', ['trial_ends_at' => now()->subDays(30)]);
-        $this->business('duka-d', 'Duka D', 'pro', ['paid_until' => now()->addMonth(), 'suspended_at' => now()]);
+        $this->business('duka-d', 'Duka D', 'premium', ['paid_until' => now()->addMonth(), 'suspended_at' => now()]);
         app(BusinessManager::class)->forget();
-    }
-
-    protected function tearDown(): void
-    {
-        app(BusinessManager::class)->forget();
-        DB::disconnect('platform');
-        File::deleteDirectory($this->dir);
-        parent::tearDown();
-    }
-
-    private function business(string $slug, string $name, string $plan, array $dates): Business
-    {
-        $file = $this->dir."/$slug.sqlite";
-        touch($file);
-        $business = Business::query()->create([
-            'slug' => $slug, 'name' => $name, 'plan_id' => Plan::query()->where('code', $plan)->value('id'),
-            'db_name' => $file, 'status' => 'ready',
-        ] + $dates);
-
-        app(BusinessManager::class)->run($business, function () use ($name) {
-            Artisan::call('migrate', ['--force' => true]);
-            Artisan::call('db:seed', ['--force' => true]);
-            app(SettingsService::class)->update(['business_name' => $name]);
-        });
-
-        return $business;
     }
 
     public function test_a_request_needs_a_business_except_for_central_routes(): void
@@ -114,7 +60,7 @@ class PlatformModeTest extends BaseTestCase
         });
     }
 
-    public function test_a_pro_business_has_everything(): void
+    public function test_a_premium_business_has_everything(): void
     {
         app(BusinessManager::class)->run(Business::query()->where('slug', 'duka-b')->first(), function () {
             $this->assertTrue(Modules::enabled('accounting'));

@@ -8,6 +8,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Models\Core\LoginLog;
 use App\Models\Core\PersonalAccessToken;
 use App\Models\Core\User;
+use App\Services\Core\SmsService;
 use App\Models\Mobile\MobileDevice;
 use App\Services\Core\AuditLogger;
 use App\Services\Core\SettingsService;
@@ -33,8 +34,16 @@ class AuthController extends Controller
     public function login(LoginRequest $request): JsonResponse
     {
         $identifier = trim((string) $request->input('login'));
+        // A phone number may be typed 0712…, 255712… or +255 712 … whichever way it was saved.
+        $phones = [$identifier];
+        if ($normal = SmsService::normalizePhone($identifier)) {
+            $phones = array_merge($phones, [$normal, '+'.$normal]);
+            if (str_starts_with($normal, '255')) {
+                $phones[] = '0'.substr($normal, 3);
+            }
+        }
         $user = User::query()
-            ->where(fn ($q) => $q->where('username', $identifier)->orWhere('email', $identifier)->orWhere('phone', $identifier))
+            ->where(fn ($q) => $q->where('username', $identifier)->orWhere('email', $identifier)->orWhereIn('phone', array_unique($phones)))
             ->first();
 
         // The same message whether the account exists or not, so accounts cannot be discovered.

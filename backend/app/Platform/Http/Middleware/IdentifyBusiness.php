@@ -35,6 +35,8 @@ class IdentifyBusiness
 
         if ($slug === '') {
             if ($this->isCentral($request)) {
+                $this->businesses->forget(); // the platform's own data only
+
                 return $next($request);
             }
 
