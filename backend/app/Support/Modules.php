@@ -9,6 +9,7 @@ use App\Services\Core\SettingsService;
  * installation. A switched-off module disappears for every user (super admins
  * included): its permissions are removed, so its menu items, pages, buttons and
  * API routes are no longer available. Data is kept; switching it on restores it.
+ * Modules outside the business's package (plan()) are switched off the same way.
  */
 final class Modules
 {
@@ -51,6 +52,8 @@ final class Modules
         $list = is_array($value) ? $value : (json_decode((string) $value, true) ?: []);
         $optionalOn = (array) app(SettingsService::class)->get('optional_modules', []);
         $list = array_merge($list, array_diff(self::OPTIONAL, $optionalOn));
+        // Modules the business's package does not include (none in single mode by default).
+        $list = array_merge($list, plan()->disabledModules());
 
         return array_values(array_unique(array_intersect($list, array_keys(self::toggleable()))));
     }

@@ -33,9 +33,16 @@ if [[ "$PART" == "all" || "$PART" == "backend" ]]; then
   fi
   $PHP artisan down --retry=15 || true
   $COMPOSER install --no-dev --optimize-autoloader --no-interaction
-  $PHP artisan migrate --force
-  $PHP artisan mauzo:sync-permissions
-  $PHP artisan mauzo:optimize-slides
+  if grep -qE '^PATOPRO_MODE=platform' .env; then
+    # Many businesses: central tables, then every business's own database.
+    $PHP artisan platform:migrate
+    $PHP artisan platform:run mauzo:sync-permissions
+    $PHP artisan platform:run mauzo:optimize-slides
+  else
+    $PHP artisan migrate --force
+    $PHP artisan mauzo:sync-permissions
+    $PHP artisan mauzo:optimize-slides
+  fi
   $PHP artisan storage:link 2>/dev/null || true
   $PHP artisan optimize:clear
   $PHP artisan config:cache

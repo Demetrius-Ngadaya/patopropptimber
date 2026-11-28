@@ -173,7 +173,7 @@ class SyncPusher
             'REMOTE_ADDR' => $original->ip(),
             'HTTP_USER_AGENT' => (string) $original->userAgent(),
         ], json_encode($payload, JSON_THROW_ON_ERROR));
-        foreach (['Authorization', 'Accept-Language'] as $header) {
+        foreach (['Authorization', 'Accept-Language', 'X-Business'] as $header) {
             if ($original->headers->has($header)) {
                 $sub->headers->set($header, (string) $original->headers->get($header));
             }

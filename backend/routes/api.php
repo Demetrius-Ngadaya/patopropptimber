@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Payments\PaymentWebhookController;
+use App\Platform\Http\Controllers\BusinessController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -16,8 +17,13 @@ use Illuminate\Support\Facades\Route;
 Route::get('/health', fn () => response()->json(['success' => true, 'status' => 'ok', 'time' => now()->toIso8601String()]))
     ->name('health');
 
+// Which business this is and what its package allows (single mode: always everything).
+Route::get('/business', [BusinessController::class, 'show'])->middleware('throttle:public')->name('business');
+
 require __DIR__.'/api/auth.php';
-require __DIR__.'/api/shop.php';
+Route::middleware('feature:online_shop')->group(function () {
+    require __DIR__.'/api/shop.php';
+});
 
 // Payment gateway callbacks: no login; each one is verified by its signature.
 Route::post('/webhooks/snippe', [PaymentWebhookController::class, 'snippe'])->middleware('throttle:120,1')->name('webhooks.snippe');

@@ -12,6 +12,9 @@ use App\Http\Middleware\LogActivity;
 use App\Http\Middleware\ResolveBranch;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocale;
+use App\Platform\Http\Middleware\EnsureBusinessWritable;
+use App\Platform\Http\Middleware\EnsureFeature;
+use App\Platform\Http\Middleware\IdentifyBusiness;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -35,7 +38,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: $proxies === '*' ? '*' : array_map('trim', explode(',', $proxies)));
 
         $middleware->append(SecurityHeaders::class);
-        $middleware->api(prepend: [ForceJsonResponse::class, SetLocale::class]);
+        // Platform mode: find the business first (everything after reads its database),
+        // then refuse changes when its subscription is read-only. Single mode: both do nothing.
+        $middleware->api(prepend: [ForceJsonResponse::class, IdentifyBusiness::class, EnsureBusinessWritable::class, SetLocale::class]);
 
         $middleware->alias([
             'permission' => CheckPermission::class,
@@ -46,6 +51,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'activity' => LogActivity::class,
             'two_factor' => EnsureTwoFactor::class,
             'developer' => EnsureDeveloper::class,
+            'feature' => EnsureFeature::class,
         ]);
 
         $middleware->redirectGuestsTo(fn (Request $request) => $request->expectsJson() ? null : '/');

@@ -17,7 +17,7 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
     Route::post('/sync/push', [MobileController::class, 'push'])->middleware('throttle:60,1')->name('sync.push');
     // Voice mode: turn what the person said into one action (when the phone's own
     // understanding is not sure). Uses the system's AI service.
-    Route::post('/voice/interpret', [VoiceController::class, 'interpret'])->middleware('throttle:40,1')->name('voice.interpret');
+    Route::post('/voice/interpret', [VoiceController::class, 'interpret'])->middleware(['feature:voice', 'throttle:40,1'])->name('voice.interpret');
 });
 
 // Who has the app on their phone, who signed in, who never tried.

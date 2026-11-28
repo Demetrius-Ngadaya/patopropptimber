@@ -9,9 +9,9 @@ return [
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['Content-Type', 'Accept', 'Accept-Language', 'Authorization', 'X-Branch-Id', 'X-Locale', 'X-Requested-With'],
+    'allowed_headers' => ['Content-Type', 'Accept', 'Accept-Language', 'Authorization', 'X-Branch-Id', 'X-Locale', 'X-Requested-With', 'X-Business'],
 
-    'exposed_headers' => ['Content-Disposition'],
+    'exposed_headers' => ['Content-Disposition', 'X-Business-State'],
 
     'max_age' => 3600,
 

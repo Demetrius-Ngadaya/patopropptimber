@@ -53,7 +53,8 @@ class AppServiceProvider extends ServiceProvider
                 return Limit::none();
             }
 
-            return Limit::perMinute(240)->by($request->user()?->id ?: $request->ip());
+            // User ids repeat between businesses on the platform, so the business is part of the key.
+            return Limit::perMinute(240)->by(business()->key().':'.($request->user()?->id ?: $request->ip()));
         });
 
         // Brute-force protection on top of the per-account lockout.
@@ -62,7 +63,7 @@ class AppServiceProvider extends ServiceProvider
 
             return [
                 Limit::perMinute(10)->by('login-ip:'.$request->ip()),
-                Limit::perMinute(5)->by('login-id:'.$identifier.'|'.$request->ip()),
+                Limit::perMinute(5)->by('login-id:'.business()->key().':'.$identifier.'|'.$request->ip()),
             ];
         });
 
@@ -76,7 +77,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('exports', function (Request $request) {
-            return Limit::perMinute(10)->by($request->user()?->id ?: $request->ip());
+            return Limit::perMinute(10)->by(business()->key().':'.($request->user()?->id ?: $request->ip()));
         });
     }
 
