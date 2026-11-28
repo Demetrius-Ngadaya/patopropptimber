@@ -89,12 +89,25 @@ export function parseItems(tokens: string[], withCost = false): SpokenItem[] {
   numbers.forEach((n) => {
     for (let k = n.start; k < n.start + n.length; k++) inNumber.add(k);
   });
-  // Split on "na"/"and"/"," that are not inside a number ("kumi na tano").
+  const numberStart = new Set(numbers.map((n) => n.start));
+  const numberEnd = new Set(numbers.map((n) => n.start + n.length));
+  // Split on "na"/"and"/"," that are not inside a number ("kumi na tano"). The phone's
+  // speech service adds no commas, so when selling a list said without "na"
+  // ("korosho mbili karanga nne") a new product also starts once the current one
+  // has both a name and a quantity.
   const parts: number[][] = [[]];
+  const complete = (part: number[]) => part.some((k) => numberStart.has(k)) && part.some((k) => !inNumber.has(k) && !UNIT_WORDS[tokens[k]] && !LINKS.has(tokens[k]) && !FILLER.has(tokens[k]));
   tokens.forEach((t, k) => {
+    const current = parts[parts.length - 1];
     if (SEPARATORS.has(t) && !inNumber.has(k)) {
-      if (parts[parts.length - 1].length) parts.push([]);
-    } else parts[parts.length - 1].push(k);
+      if (current.length) parts.push([]);
+      return;
+    }
+    if (!withCost && current.length && complete(current)) {
+      const nameAfterNumber = numberEnd.has(k) && !inNumber.has(k) && !UNIT_WORDS[t] && !LINKS.has(t) && !FILLER.has(t);
+      if (numberStart.has(k) || nameAfterNumber) parts.push([]);
+    }
+    parts[parts.length - 1].push(k);
   });
   const items: SpokenItem[] = [];
   for (const part of parts) {

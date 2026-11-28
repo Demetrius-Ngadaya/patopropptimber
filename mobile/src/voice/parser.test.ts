@@ -79,3 +79,12 @@ describe('voice commands (English)', () => {
     assert.equal(p('yes', 'confirm').intent, 'yes');
   });
 });
+
+it('a list said without "na" or commas, as the phone hears it', () => {
+  const c = parseCommand('uza korosho mbili karanga nne whitedent moja castle light tatu maji ya uhai madogo mbili strawberry pc tatu');
+  assert.equal(c.intent, 'sell_add');
+  if (c.intent !== 'sell_add') return;
+  assert.deepEqual(c.args.items.map((i) => [i.name, i.quantity]), [['korosho', 2], ['karanga', 4], ['whitedent', 1], ['castle light', 3], ['maji uhai madogo', 2], ['strawberry', 3]]);
+  const n = parseCommand('uza saruji mifuko miwili');
+  if (n.intent === 'sell_add') assert.deepEqual([n.args.items[0].name, n.args.items[0].quantity, n.args.items[0].unit], ['saruji', 2, 'bag']);
+});

@@ -7,8 +7,9 @@
  */
 
 const SW_UNITS: Record<string, number> = {
-  sifuri: 0, moja: 1, mmoja: 1, mbili: 2, wawili: 2, tatu: 3, watatu: 3, nne: 4, wanne: 4, tano: 5, watano: 5,
-  sita: 6, saba: 7, nane: 8, wanane: 8, tisa: 9, kenda: 9,
+  sifuri: 0, moja: 1, mmoja: 1, kimoja: 1, mbili: 2, wawili: 2, miwili: 2, viwili: 2, mawili: 2,
+  tatu: 3, watatu: 3, mitatu: 3, vitatu: 3, matatu: 3, nne: 4, wanne: 4, minne: 4, vinne: 4, manne: 4,
+  tano: 5, watano: 5, mitano: 5, vitano: 5, matano: 5, sita: 6, saba: 7, nane: 8, wanane: 8, minane: 8, vinane: 8, manane: 8, tisa: 9, kenda: 9,
 };
 const SW_TENS: Record<string, number> = { kumi: 10, ishirini: 20, thelathini: 30, arobaini: 40, hamsini: 50, sitini: 60, sabini: 70, themanini: 80, tisini: 90 };
 const SW_SCALES: Record<string, number> = { mia: 100, elfu: 1000, laki: 100000, milioni: 1000000, bilioni: 1000000000 };

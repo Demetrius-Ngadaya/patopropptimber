@@ -27,3 +27,8 @@ describe('finding the product that was said', () => {
     assert.deepEqual(find('simu ya samsung'), { match: null, choices: [] });
   });
 });
+
+it('names that sound alike match ("castle light" is Castle Lite)', () => {
+  const list = ['Castle Lite', 'Castle Lager', 'Korosho'].map((name) => ({ name }));
+  assert.equal(decide(rank('castle light', list, (p) => p.name)).match?.name, 'Castle Lite');
+});

@@ -35,6 +35,13 @@ function editRatio(a: string, b: string): number {
   return 1 - dp[b.length] / Math.max(a.length, b.length);
 }
 
+/** How a word sounds, so "light" finds "Lite", "kola" finds "Cola", "fanta" finds "Phanta". */
+function sound(w: string): string {
+  return w
+    .replace(/ph/g, 'f').replace(/igh(t?)/g, 'ai$1').replace(/ite$/, 'ait').replace(/ck|c(?=[aou])|q/g, 'k').replace(/c/g, 's')
+    .replace(/z/g, 's').replace(/y/g, 'i').replace(/(.)\1+/g, '$1').replace(/(?<=..)e$/, '');
+}
+
 const words = (s: string) => tokenize(s).filter((w) => !['la', 'ya', 'za', 'wa', 'cha', 'of', 'the', 'na', 'and'].includes(w)).map(stem);
 
 /** How well `said` names `label` (0–1). */
@@ -48,7 +55,7 @@ export function similarity(said: string, label: string, code?: string | null): n
   for (const w of a) {
     let best = 0;
     for (const x of b) {
-      const r = w === x ? 1 : x.startsWith(w) && w.length >= 3 ? 0.9 : /^\d+$/.test(w) || /^\d+$/.test(x) ? (w === x ? 1 : 0) : editRatio(w, x);
+      const r = w === x ? 1 : x.startsWith(w) && w.length >= 3 ? 0.9 : /^\d+$/.test(w) || /^\d+$/.test(x) ? (w === x ? 1 : 0) : Math.max(editRatio(w, x), editRatio(sound(w), sound(x)) * 0.95);
       if (r > best) best = r;
     }
     sum += best;
@@ -77,5 +84,7 @@ export function decide<T>(candidates: Candidate<T>[]): { match: T | null; choice
   if (!first) return { match: null, choices: [] };
   if (first.score >= 0.82 && (!second || first.score - second.score >= 0.12 || second.score < 0.7)) return { match: first.item, choices: [] };
   if (first.score >= 0.95 && second && second.score < 0.95) return { match: first.item, choices: [] };
+  // Only one product is anywhere near: asking "which one?" with one choice helps nobody.
+  if (first.score >= 0.75 && (!second || second.score < 0.6)) return { match: first.item, choices: [] };
   return { match: null, choices: candidates.filter((c) => c.score >= Math.max(0.6, first.score - 0.12)).slice(0, 4).map((c) => c.item) };
 }
