@@ -67,9 +67,15 @@ final class BusinessManager
         $name = $this->original['connection'];
         $db = $this->original['database'];
         $db['database'] = $business->db_name;
-        $db['host'] = $business->db_host ?: $db['host'] ?? null;
-        $db['username'] = $business->db_username ?: config('patopro.platform.business_database.username');
-        $db['password'] = $business->db_username ? $business->db_password : config('patopro.platform.business_database.password');
+        if (($db['driver'] ?? null) !== 'sqlite') {
+            // Server, user and password only where there is a value: an empty "host" makes Laravel refuse to connect.
+            $login = array_filter([
+                'host' => $business->db_host,
+                'username' => $business->db_username ?: config('patopro.platform.business_database.username'),
+                'password' => $business->db_username ? $business->db_password : config('patopro.platform.business_database.password'),
+            ], fn ($v) => $v !== null && $v !== '');
+            $db = array_merge($db, $login);
+        }
         config(["database.connections.$name" => $db]);
         DB::purge($name);
 
