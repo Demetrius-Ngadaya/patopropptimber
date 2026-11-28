@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\Schedule;
 */
 if (config('patopro.mode') === 'platform' && ! business()->onPlatform()) {
     Schedule::command('platform:provision')->everyMinute()->withoutOverlapping();
+    Schedule::command('platform:payments:check')->everyFiveMinutes()->withoutOverlapping();
+    Schedule::command('platform:reminders')->dailyAt('09:00')->withoutOverlapping();
     Schedule::command('platform:run schedule:run')->everyMinute();
 
     return;

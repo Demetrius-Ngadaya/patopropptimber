@@ -5,13 +5,17 @@ namespace App\Platform;
 use App\Models\Catalog\Product;
 use App\Models\Core\Branch;
 use App\Models\Core\User;
+use App\Platform\Console\BillingSettingsCommand;
+use App\Platform\Console\CheckPaymentsCommand;
 use App\Platform\Console\CreateBusinessCommand;
 use App\Platform\Console\InstallPlatformCommand;
 use App\Platform\Console\ListBusinessesCommand;
 use App\Platform\Console\MigrateBusinessesCommand;
 use App\Platform\Console\ProvisionPendingCommand;
+use App\Platform\Console\RecordPaymentCommand;
 use App\Platform\Console\RefreshTemplateCommand;
 use App\Platform\Console\RunForBusinessesCommand;
+use App\Platform\Console\SendRemindersCommand;
 use App\Platform\Support\BusinessManager;
 use Illuminate\Support\ServiceProvider;
 use RuntimeException;
@@ -51,6 +55,10 @@ class PlatformServiceProvider extends ServiceProvider
                 RunForBusinessesCommand::class,
                 RefreshTemplateCommand::class,
                 ProvisionPendingCommand::class,
+                BillingSettingsCommand::class,
+                CheckPaymentsCommand::class,
+                RecordPaymentCommand::class,
+                SendRemindersCommand::class,
             ]);
             $this->chooseBusinessForCommand();
         }

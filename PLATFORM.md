@@ -24,7 +24,7 @@ Platform-only code lives in `backend/app/Platform/` and `backend/database/migrat
 - **Single mode:** the same limits can be set in `.env` (`PATOPRO_FEATURES`, `PATOPRO_LIMIT_*`). By default everything is allowed with no limits, so existing installs do not change.
 - **New endpoint:** `GET /api/v1/business` – the business, its state and its package (for banners and menus).
 
-## Step 2 (this release): sign-up, backend
+## Step 2: sign-up, backend
 
 - **Packages:** Starter 10,000 · Msingi 15,000 · **Biashara 35,000 (most popular)** · Professional 55,000 · Premium 75,000 TSh a month (a year = 10 months). All have a 14-day free trial.
 - **Sign-up API (`/api/v1/platform/…`):**
@@ -43,7 +43,43 @@ Platform-only code lives in `backend/app/Platform/` and `backend/database/migrat
 - **Owners sign in with their phone number,** typed any common way (0712…, 255712…, +255…). This works on single installs too.
 - **One cron line:** it runs the platform's own tasks, then each business's tasks in a separate process.
 
-Not yet: the website pages (pricing, sign-up), website addresses `/<business>/…`, payments and SMS reminders, and mobile phone sign-in. These come next.
+## Step 4 (this release): paying for packages, backend
+
+- **Gateways:**
+  - **AzamPay** through the SHEZONI payment service (the same as for domains, hosting and SMS), using the `AZAMPAY_*` keys.
+  - **Snippe**, using the `SNIPPE_*` keys.
+- **The Software Engineer chooses which gateways are offered:**
+  ```bash
+  php artisan platform:billing                               # show
+  php artisan platform:billing --enable=snippe --default=azampay --choice=no
+  php artisan platform:billing --disable=snippe
+  ```
+  With `--choice=no`, businesses pay only with the default gateway. With `--choice=yes`, they choose among the offered ones.
+- **Business API, while signed in (`/api/v1/platform/billing…`):**
+  - `GET billing`: state, packages, gateways and networks, past payments.
+  - `POST billing/pay`: sends the USSD push.
+  - `GET billing/payments/{number}`: the page asks this until the payment is settled.
+
+  These also work while a business is read-only.
+- **Callbacks:**
+  - AzamPay: `/api/v1/platform/webhooks/azampay/<AZAMPAY_CALLBACK_SECRET>`. The secret is in the address, as in the SHEZONI hosting portal.
+  - Snippe: `/api/v1/platform/webhooks/snippe` (signed).
+
+  Every payment is **checked with the gateway** before it counts, whatever the callback says.
+- **Networks for AzamPay:** detected from the number: Airtel (068/069/078), Tigo / Mixx by Yas (065/067/071/077) and HaloPesa (061/062). M-Pesa numbers are refused with a clear message.
+- **When a payment is confirmed:**
+  - The package is extended by 1 month, or 12 for yearly. Yearly costs 10 months' price.
+  - It counts from the end of the current paid or trial period, so paying early loses no days. If the business has already expired, it counts from today.
+  - A receipt goes by SMS.
+- **Cash or bank payments:**
+  ```bash
+  php artisan platform:pay duka-la-juma --plan=biashara --cycle=yearly --note="CRDB 123"
+  ```
+- **Scheduled tasks:**
+  - **Every 5 minutes:** payments still waiting are checked with their gateway, and expire after 30 minutes.
+  - **Daily at 09:00:** SMS reminders 7, 3 and 1 days before the end, on the last day, and once when the business becomes read-only.
+
+Not yet: the website pages (pricing, sign-up, the billing page), website addresses `/<business>/…`, and mobile phone sign-in.
 
 ## Commands (platform mode)
 
@@ -53,6 +89,9 @@ php artisan platform:business:create duka-la-juma "Duka la Juma" --plan=biashara
 php artisan platform:template                     # create/refresh the template new businesses are copied from
 php artisan platform:provision                    # finish setups that did not complete (the scheduler runs it)
 php artisan platform:list                         # businesses, package, state, end date
+php artisan platform:billing                      # which payment gateways are offered
+php artisan platform:pay <business> --cycle=…     # record a cash/bank payment
+php artisan platform:reminders --dry-run          # see which reminders would go out today
 php artisan platform:migrate                      # central + every business (deploy.sh runs this)
 php artisan platform:run schedule:run             # scheduled tasks for every business (the one cron line)
 php artisan platform:run cache:clear --business=duka-la-juma

@@ -93,6 +93,35 @@ return [
             'businesses_per_phone' => 3,   // businesses one phone can own
         ],
 
+        /*
+        | Paying for a package. The Software Engineer chooses which gateways are
+        | offered (platform:billing); their keys stay here in .env.
+        */
+        'billing' => [
+            // Starting choice, until changed with php artisan platform:billing.
+            'gateways' => array_filter(array_map('trim', explode(',', (string) env('PLATFORM_PAYMENT_GATEWAYS', 'azampay,snippe')))),
+            'default' => env('PLATFORM_PAYMENT_DEFAULT', 'azampay'),
+            'customer_choice' => (bool) env('PLATFORM_PAYMENT_CUSTOMER_CHOICE', false),
+            'pending_minutes' => 30,  // a payment not confirmed by then is marked expired
+
+            // AzamPay through the SHEZONI payment service (as for domains, hosting and SMS).
+            'azampay' => [
+                'initiation_url' => env('AZAMPAY_PAYMENT_INITIATION_URL'),
+                'status_url' => env('AZAMPAY_PAYMENT_STATUS_URL'),
+                'merchant_email' => env('AZAMPAY_MERCHANT_EMAIL'),
+                'merchant_password' => env('AZAMPAY_MERCHANT_PASSWORD'),
+                'user_status' => env('AZAMPAY_USER_STATUS', 'SHEZON_HOSTING'),
+                'user_id' => env('AZAMPAY_USER_ID'),
+                // The callback address ends with this secret: /api/v1/platform/webhooks/azampay/<secret>
+                'callback_secret' => env('AZAMPAY_CALLBACK_SECRET'),
+                'methods' => ['Airtel' => 'Airtel Money', 'Tigo' => 'Mixx by Yas (Tigo Pesa)', 'Halopesa' => 'HaloPesa', 'Azampesa' => 'AzamPesa'],
+            ],
+            // Snippe uses the SNIPPE_* keys in config/mauzo.php.
+            'snippe' => [
+                'methods' => ['mpesa' => 'M-Pesa', 'airtel' => 'Airtel Money', 'mixx' => 'Mixx by Yas', 'halopesa' => 'HaloPesa'],
+            ],
+        ],
+
         // What happens around the end of a paid period (all in days).
         'subscription' => [
             'trial_days' => (int) env('PLATFORM_TRIAL_DAYS', 14),

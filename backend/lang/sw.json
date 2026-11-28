@@ -1600,5 +1600,20 @@
     "A new code is on its way.": "Namba mpya inakuja.",
     "Your business is ready.": "Biashara yako iko tayari.",
     "Phone confirmed. We are preparing your business; this takes a moment.": "Simu imethibitishwa. Tunaandaa biashara yako; itachukua muda mfupi.",
-    "Welcome to PatoPro! :name is ready: :url Sign in with your phone number and password. Free trial until :date.": "Karibu PatoPro! :name iko tayari: :url Ingia kwa namba yako ya simu na nenosiri. Majaribio bure hadi :date."
+    "Welcome to PatoPro! :name is ready: :url Sign in with your phone number and password. Free trial until :date.": "Karibu PatoPro! :name iko tayari: :url Ingia kwa namba yako ya simu na nenosiri. Majaribio bure hadi :date.",
+    "This payment method is not offered.": "Njia hii ya malipo haipatikani.",
+    "This package has no price set. Please contact SHEZONI.": "Kifurushi hiki hakina bei. Tafadhali wasiliana na SHEZONI.",
+    "Choose your mobile money network.": "Chagua mtandao wako wa pesa za simu.",
+    "The payment was not completed.": "Malipo hayakukamilika.",
+    "The payment was not confirmed in time.": "Malipo hayakuthibitishwa kwa wakati.",
+    "PatoPro: payment received, :currency :amount for :plan (:number). :name is paid until :date. Thank you!": "PatoPro: malipo yamepokelewa, :currency :amount kwa :plan (:number). :name imelipiwa hadi :date. Asante!",
+    "Could not connect to the payment service. Please try again.": "Imeshindikana kuunganisha na huduma ya malipo. Tafadhali jaribu tena.",
+    "The payment service did not accept the request. Check the phone number and network, then try again.": "Huduma ya malipo haikukubali ombi. Hakikisha namba ya simu na mtandao, kisha jaribu tena.",
+    "Check your phone and enter your PIN to pay :currency :amount.": "Angalia simu yako na uweke PIN kulipa :currency :amount.",
+    "free trial": "majaribio ya bure",
+    "package": "kifurushi",
+    "PatoPro: the :kind of :name ends today. You have :grace extra days; pay to keep selling: :url": "PatoPro: :name, muda wa :kind unaisha leo. Una siku :grace za ziada; lipia ili kuendelea kuuza: :url",
+    "PatoPro: the :kind of :name ends in :days day(s), on :date. Pay to continue without interruption: :url": "PatoPro: :name, muda wa :kind unaisha baada ya siku :days (:date). Lipia ili kuendelea bila kukatizwa: :url",
+    "PatoPro: :name can now only view its records. Your data is safe. Pay to continue selling: :url": "PatoPro: :name sasa inaweza kuangalia taarifa tu. Taarifa zako ziko salama. Lipia ili kuendelea kuuza: :url",
+    "Use an Airtel, Mixx by Yas (Tigo) or HaloPesa number to pay. M-Pesa is not available yet.": "Tumia namba ya Airtel, Mixx by Yas (Tigo) au HaloPesa kulipa. M-Pesa bado haipatikani."
 }

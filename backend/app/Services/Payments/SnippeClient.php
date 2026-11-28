@@ -30,6 +30,10 @@ class SnippeClient
     public function webhookUrl(): ?string
     {
         $url = config('mauzo.snippe.webhook_url') ?: rtrim((string) config('app.url'), '/').'/api/v1/webhooks/snippe';
+        // On the platform many businesses share this address: say which one the payment is for.
+        if (business()->onPlatform()) {
+            $url .= (str_contains($url, '?') ? '&' : '?').'business='.rawurlencode((string) business()->slug());
+        }
 
         return str_starts_with($url, 'https://') ? $url : null;
     }
@@ -41,7 +45,7 @@ class SnippeClient
     }
 
     /**
-     * @param  array{amount: int, phone: string, firstname: string, lastname: string, email: string, metadata?: array, idempotency_key: string}  $p
+     * @param  array{amount: int, phone: string, firstname: string, lastname: string, email: string, metadata?: array, idempotency_key: string, webhook_url?: string}  $p
      * @return array<string, mixed> the payment object (reference, status, expires_at ...)
      */
     public function createMobilePayment(array $p): array
@@ -51,7 +55,7 @@ class SnippeClient
             'details' => ['amount' => $p['amount'], 'currency' => 'TZS'],
             'phone_number' => $p['phone'],
             'customer' => ['firstname' => $p['firstname'], 'lastname' => $p['lastname'], 'email' => $p['email']],
-            'webhook_url' => $this->webhookUrl(),
+            'webhook_url' => $p['webhook_url'] ?? $this->webhookUrl(),
             'metadata' => $p['metadata'] ?? null,
         ], fn ($v) => $v !== null);
 
